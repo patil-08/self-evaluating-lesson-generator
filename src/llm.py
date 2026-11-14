@@ -106,38 +106,53 @@ need checking."""
 
 _MOCK_JUDGE = {
     "passed": True,
-    "checks": {
-        "accurate_and_grounded": {
+    "checks": [
+        {
+            "check_id": "ACC-01",
             "passed": True,
-            "reason": "The explanation describes retrieval before answer writing.",
-            "evidence": "The steps say the system searches information, then uses it.",
+            "reason": "The lesson's factual claims match the supplied source facts.",
+            "evidence_quote": "RAG means Retrieval-Augmented Generation.",
+            "claims": [
+                {
+                    "claim": "RAG is short for Retrieval-Augmented Generation.",
+                    "lesson_quote": "RAG means Retrieval-Augmented Generation.",
+                    "fact_ids": ["F01"],
+                    "verdict": "supported",
+                    "reason": "F01 defines the name of RAG.",
+                }
+            ],
         },
-        "beginner_friendly": {
+        {
+            "check_id": "BEGIN-01",
             "passed": True,
-            "reason": "The sentences use common words and explain the new term.",
-            "evidence": "The language model is described as an AI program that works with words.",
+            "reason": "The prose uses direct language and explains the key idea.",
+            "evidence_quote": "It is a way for an AI system to find useful information before it writes an answer.",
         },
-        "teaches_by_example": {
+        {
+            "check_id": "EXAMPLE-03",
             "passed": True,
-            "reason": "A school notice example connects the process to a familiar task.",
-            "evidence": "The helper checks the school notice before answering.",
+            "reason": "The school notice example connects searching and using found information.",
+            "evidence_quote": "The helper checks the school notice and uses its date to answer.",
         },
-        "no_unexplained_jargon": {
+        {
+            "check_id": "JARG-02",
             "passed": True,
-            "reason": "RAG and language model are explained in plain language.",
-            "evidence": "The lesson expands RAG and defines language model.",
+            "reason": "No additional unexplained technical terms appear.",
+            "evidence_quote": "language model, which is an AI program that works with words.",
         },
-        "covers_key_points": {
+        {
+            "check_id": "COVER-02",
             "passed": True,
-            "reason": "What RAG is, how it works, and why it matters are covered.",
-            "evidence": "The lesson has What, How, and Why sections.",
+            "reason": "The lesson explains the definition, process, and value of RAG.",
+            "evidence_quote": "The system can use information supplied for a task, such as a set of company guides.",
         },
-        "coherent_flow": {
+        {
+            "check_id": "FLOW-01",
             "passed": True,
-            "reason": "The lesson introduces the idea before steps and usefulness.",
-            "evidence": "The sections progress from What to How to Why.",
+            "reason": "The lesson moves from definition to process, example, and value.",
+            "evidence_quote": "## What is RAG?",
         },
-    },
+    ],
 }
 
 

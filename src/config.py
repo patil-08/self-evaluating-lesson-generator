@@ -19,6 +19,29 @@ MAX_SENTENCE_WORDS = 20
 MIN_EXAMPLES = 1
 # These are the three learning questions explicitly required by the assignment.
 MIN_REQUIRED_SECTIONS = 3
+# At least nine in ten sentences should meet the target; a single short quote
+# should not fail a lesson with otherwise readable prose.
+MIN_SHORT_SENTENCE_RATIO = 0.9
+# A 30-word hard ceiling catches severe run-ons beyond the preferred 20 words.
+MAX_SENTENCE_WORDS_HARD = 30
+# Flesch 60 is a broad "plain English" floor, paired with stronger learner checks.
+MIN_READABILITY_SCORE = 60.0
+# Do not allow the small curated advanced-word blacklist in learner-facing text.
+MAX_ADVANCED_VOCABULARY_HITS = 0
+# At most two listed phrasal verbs per 100 words avoids phrasal-verb-heavy prose.
+MAX_PHRASAL_VERBS_PER_100_WORDS = 2.0
+# Define a technical term within twelve following words so the explanation stays close.
+MAX_JARGON_DEFINITION_WORDS = 12
+# 250 words leaves room for what/why/how, a worked example, and a glossary.
+MIN_LESSON_WORDS = 250
+# 650 words keeps a beginner lesson focused and manageable.
+MAX_LESSON_WORDS = 650
+# A short example needs enough room to show a situation and the answer path.
+MIN_EXAMPLE_WORDS = 35
+# Three visible ordered actions demonstrate a process, not only an analogy.
+MIN_WORKED_EXAMPLE_STEPS = 3
+# Five learner-relevant terms cover the key vocabulary introduced by this topic.
+MIN_GLOSSARY_TERMS = 5
 
 # Three retries tolerate brief provider outages without hiding persistent errors.
 API_MAX_RETRIES = 3
