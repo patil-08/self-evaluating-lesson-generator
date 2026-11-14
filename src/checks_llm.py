@@ -78,8 +78,9 @@ def _build_judge_prompt(
         "an omission.\n\n"
         "For the accurate_and_grounded check, extract every atomic factual "
         "claim in the lesson. Return a non-empty 'claims' array. Each item must "
-        "contain 'claim', exact 'lesson_quote', 'fact_ids' (one or more IDs "
-        "from the supplied facts), 'verdict' ('supported', 'contradicted', or "
+        "contain 'claim', exact 'lesson_quote', 'fact_ids' (valid supporting "
+        "or contradicting IDs; use an empty list only for unsupported claims), "
+        "'verdict' ('supported', 'contradicted', or "
         "'unsupported'), and 'reason'. A claim is supported only when its "
         "cited source facts entail it. Mark any claim that is not supported by "
         "these facts as unsupported, even if it sounds generally plausible. "
@@ -119,12 +120,10 @@ def _validate_claims(
         if not isinstance(quote, str) or not quote.strip() or not _is_lesson_quote(quote, lesson):
             errors.append(f"Atomic claim {index} lacks an exact lesson quote.")
             continue
-        if (
-            not isinstance(raw_fact_ids, list)
-            or not raw_fact_ids
-            or not all(isinstance(item, str) for item in raw_fact_ids)
+        if not isinstance(raw_fact_ids, list) or not all(
+            isinstance(item, str) for item in raw_fact_ids
         ):
-            errors.append(f"Atomic claim {index} must cite one or more fact IDs.")
+            errors.append(f"Atomic claim {index} must contain a list of fact IDs.")
             continue
         if not isinstance(verdict, str) or verdict not in {
             "supported",
@@ -138,6 +137,10 @@ def _validate_claims(
             continue
 
         cited_ids = tuple(raw_fact_ids)
+        if verdict != "unsupported" and not cited_ids:
+            errors.append(
+                f"Atomic claim {index} must cite a source fact for verdict {verdict}."
+            )
         unknown_ids = sorted(set(cited_ids) - known_fact_ids)
         if unknown_ids:
             errors.append(

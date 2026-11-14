@@ -96,8 +96,12 @@ def _read_bool(name: str, default: bool) -> bool:
     )
 
 
-def load_config(*, dotenv_path: str | None = None) -> Settings:
-    """Load `.env` and validate the provider settings before a request."""
+def load_config(
+    *,
+    dotenv_path: str | None = None,
+    require_live: bool = True,
+) -> Settings:
+    """Load `.env`; callers may defer live-credential checks to choose mock mode."""
     load_dotenv(dotenv_path=dotenv_path, override=False)
 
     mock_llm = _read_bool("MOCK_LLM", default=True)
@@ -114,7 +118,7 @@ def load_config(*, dotenv_path: str | None = None) -> Settings:
             "LLM_BASE_URL must be an absolute http:// or https:// URL."
         )
 
-    if not mock_llm:
+    if not mock_llm and require_live:
         missing = [
             name
             for name, value in (

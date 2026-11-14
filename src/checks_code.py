@@ -45,6 +45,7 @@ _DEFINITION_CUES = (
         r"\b(?:a|an)\s+(?:way|tool|system|method|process|program|list|number|type)\b",
         re.IGNORECASE,
     ),
+    re.compile(r"\b(?:a|an)\s+(?:AI|computer)\s+(?:program|system|tool)\b", re.IGNORECASE),
     re.compile(r"\b(?:stores?|searches?)\b", re.IGNORECASE),
 )
 _ADVANCED_WORD_FALLBACK = (

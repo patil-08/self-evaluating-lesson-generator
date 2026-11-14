@@ -1,0 +1,130 @@
+{
+  "fixtures": [
+    {
+      "id": "good-school-notice",
+      "file": "good_school_notice.md",
+      "expected_pass": true,
+      "expected_fail_checks": []
+    },
+    {
+      "id": "good-library-card",
+      "file": "good_library_card.md",
+      "expected_pass": true,
+      "expected_fail_checks": []
+    },
+    {
+      "id": "good-cricket-score",
+      "file": "good_cricket_score.md",
+      "expected_pass": true,
+      "expected_fail_checks": []
+    },
+    {
+      "id": "good-shop-policy",
+      "file": "good_shop_policy.md",
+      "expected_pass": true,
+      "expected_fail_checks": []
+    },
+    {
+      "id": "flaw-false-claim",
+      "base_fixture": "good-school-notice",
+      "mutations": [
+        {
+          "type": "append",
+          "text": "RAG guarantees that every answer is correct."
+        }
+      ],
+      "expected_pass": false,
+      "expected_fail_checks": ["ACC-01"]
+    },
+    {
+      "id": "flaw-unexplained-jargon",
+      "base_fixture": "good-school-notice",
+      "mutations": [
+        {
+          "type": "append",
+          "text": "The system also uses cosine similarity."
+        }
+      ],
+      "expected_pass": false,
+      "expected_fail_checks": ["ACC-01", "JARG-02"]
+    },
+    {
+      "id": "flaw-no-example",
+      "base_fixture": "good-library-card",
+      "mutations": [
+        {
+          "type": "remove_section",
+          "heading": "Everyday worked example"
+        }
+      ],
+      "expected_pass": false,
+      "expected_fail_checks": [
+        "EXAMPLE-01",
+        "EXAMPLE-02",
+        "EXAMPLE-03",
+        "FLOW-01"
+      ]
+    },
+    {
+      "id": "flaw-wrong-order",
+      "base_fixture": "good-cricket-score",
+      "mutations": [
+        {
+          "type": "swap_sections",
+          "first_heading": "How does RAG work?",
+          "second_heading": "Why does RAG matter?"
+        }
+      ],
+      "expected_pass": false,
+      "expected_fail_checks": ["COVER-01", "FLOW-01"]
+    },
+    {
+      "id": "flaw-long-sentences",
+      "base_fixture": "good-shop-policy",
+      "mutations": [
+        {
+          "type": "append",
+          "text": " This explanation has many extra clauses and words that continue for a long time, combine several separate thoughts, add details that the reader does not need, and make it hard to remember the main point because the sentence keeps going well past a comfortable length for a beginner."
+        }
+      ],
+      "expected_pass": false,
+      "expected_fail_checks": ["BEGIN-01", "BEGIN-02"]
+    },
+    {
+      "id": "flaw-missing-section",
+      "base_fixture": "good-school-notice",
+      "mutations": [
+        {
+          "type": "remove_section",
+          "heading": "How does RAG work?"
+        }
+      ],
+      "expected_pass": false,
+      "expected_fail_checks": ["COVER-01", "COVER-02", "FLOW-01"]
+    },
+    {
+      "id": "flaw-idioms",
+      "base_fixture": "good-library-card",
+      "mutations": [
+        {
+          "type": "append",
+          "text": " In a nutshell, the process is a piece of cake."
+        }
+      ],
+      "expected_pass": false,
+      "expected_fail_checks": ["BEGIN-01", "STYLE-01"]
+    },
+    {
+      "id": "flaw-missing-limitation",
+      "base_fixture": "good-cricket-score",
+      "mutations": [
+        {
+          "type": "remove_section",
+          "heading": "Limits"
+        }
+      ],
+      "expected_pass": false,
+      "expected_fail_checks": ["LIMIT-01"]
+    }
+  ]
+}

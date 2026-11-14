@@ -104,6 +104,27 @@ def test_offline_mock_judge_matches_the_versioned_check_contract() -> None:
     assert client.usage.calls == 2
 
 
+def test_offline_mock_lesson_passes_the_full_evaluator() -> None:
+    client = LLMClient(
+        Settings(
+            mock_llm=True,
+            api_key=None,
+            base_url="https://api.openai.com/v1",
+            gen_model="",
+            judge_model="",
+        )
+    )
+    lesson = client.complete("lesson", role=ModelRole.GENERATION).content
+
+    result = evaluate_lesson(lesson, client=client, facts=load_facts())
+
+    assert result.passed, [
+        (check.check_id, check.reason)
+        for check in result.checks
+        if not check.passed
+    ]
+
+
 def test_evaluator_records_version_and_requires_every_check_to_pass() -> None:
     client = FakeJudgeClient()
 
