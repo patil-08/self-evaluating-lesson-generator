@@ -223,3 +223,4 @@ More detail is in [docs/DESIGN.md](docs/DESIGN.md) and
 - [docs/LOOM_SCRIPT.md](docs/LOOM_SCRIPT.md) — 18-minute recording plan.
 - [docs/INTERVIEW_PREP.md](docs/INTERVIEW_PREP.md) — project-specific Q&A.
 - [SUBMISSION_CHECKLIST.md](SUBMISSION_CHECKLIST.md) — submission readiness.
+# self-evaluating-lesson-generator
