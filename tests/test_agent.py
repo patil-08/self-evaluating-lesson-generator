@@ -8,6 +8,7 @@ from src.agent import _inject_error, run_lesson
 from src.cli import main
 from src.config import Settings
 from src.llm import LLMClient, LLMResponse, ModelRole
+from src.memory import MemoryStore
 
 
 def _mock_settings() -> Settings:
@@ -43,6 +44,7 @@ def test_injected_first_draft_flaws_are_rejected(
         max_retries=0,
         inject_error=error_name,
         output_dir=tmp_path,
+        memory_store=MemoryStore(tmp_path / "memory.sqlite3"),
     )
 
     assert result.state["status"] == "escalated_to_human"
@@ -72,6 +74,7 @@ def test_graph_terminates_after_initial_attempt_and_two_retries(tmp_path) -> Non
         client=AlwaysFailingClient(settings=_mock_settings()),
         max_retries=2,
         output_dir=tmp_path,
+        memory_store=MemoryStore(tmp_path / "memory.sqlite3"),
     )
 
     assert result.state["status"] == "escalated_to_human"
@@ -105,6 +108,8 @@ def test_mock_cli_run_repairs_a_flaw_and_persists_both_reports(
             "--mock",
             "--output-dir",
             str(tmp_path),
+            "--memory-db",
+            str(tmp_path / "memory.sqlite3"),
         ]
     )
 
@@ -131,3 +136,11 @@ def test_mock_cli_run_repairs_a_flaw_and_persists_both_reports(
         "judge": "mock-judge",
     }
     assert "## Rejection log" in markdown_reports[0].read_text(encoding="utf-8")
+    memory = MemoryStore(tmp_path / "memory.sqlite3").snapshot(rubric_version="1.0")
+    assert {
+        failure["check_id"] for failure in memory["failure_counts"]
+    } == {"ACC-01", "JARG-02"}
+    assert all(
+        fix["fixed_count"] == fix["resolved_count"] == 1
+        for fix in memory["fix_effectiveness"]
+    )
