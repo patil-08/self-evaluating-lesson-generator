@@ -1,0 +1,92 @@
+[
+  {
+    "id": "F01",
+    "fact": "Retrieval-Augmented Generation (RAG) combines information search with a language model that writes an answer using the information found.",
+    "source_url": "https://cloud.google.com/use-cases/retrieval-augmented-generation"
+  },
+  {
+    "id": "F02",
+    "fact": "The 2020 RAG paper describes combining a model's stored knowledge with a separate, searchable collection of documents.",
+    "source_url": "https://arxiv.org/abs/2005.11401"
+  },
+  {
+    "id": "F03",
+    "fact": "A model may not have access to a person's private documents or the latest changes unless those details are supplied to it.",
+    "source_url": "https://learn.microsoft.com/en-us/azure/search/retrieval-augmented-generation-overview"
+  },
+  {
+    "id": "F04",
+    "fact": "Before answering, a RAG system searches its knowledge collection for information related to the user's question.",
+    "source_url": "https://cloud.google.com/use-cases/retrieval-augmented-generation"
+  },
+  {
+    "id": "F05",
+    "fact": "The system adds the question and selected information to the model's input; the model then writes an answer using that context.",
+    "source_url": "https://learn.microsoft.com/en-us/azure/search/retrieval-augmented-generation-overview"
+  },
+  {
+    "id": "F06",
+    "fact": "A common preparation step splits long documents into smaller pieces, called chunks, so search can return selected parts instead of whole documents.",
+    "source_url": "https://learn.microsoft.com/en-us/azure/search/retrieval-augmented-generation-overview"
+  },
+  {
+    "id": "F07",
+    "fact": "An embedding is a list of numbers made from text; it represents some of the text's meaning and context.",
+    "source_url": "https://learn.microsoft.com/en-us/azure/search/vector-search-overview"
+  },
+  {
+    "id": "F08",
+    "fact": "When text has a similar meaning, its embedding is often near another similar text's embedding, even when the words differ.",
+    "source_url": "https://learn.microsoft.com/en-us/azure/search/vector-search-overview"
+  },
+  {
+    "id": "F09",
+    "fact": "A vector search index stores numerical text representations and can find entries whose representations are close to a question's representation.",
+    "source_url": "https://learn.microsoft.com/en-us/azure/search/vector-search-overview"
+  },
+  {
+    "id": "F10",
+    "fact": "A vector database or index can be used to keep searchable information for a RAG system; the exact product may also store text and other fields.",
+    "source_url": "https://learn.microsoft.com/en-us/azure/search/vector-search-overview"
+  },
+  {
+    "id": "F11",
+    "fact": "RAG can make a model's answer more relevant to selected documents, such as a company's own guides, when useful passages are retrieved.",
+    "source_url": "https://cloud.google.com/use-cases/retrieval-augmented-generation"
+  },
+  {
+    "id": "F12",
+    "fact": "A system can show the retrieved passages or their sources with an answer, which helps a person check where the information came from.",
+    "source_url": "https://learn.microsoft.com/en-us/azure/search/retrieval-augmented-generation-overview"
+  },
+  {
+    "id": "F13",
+    "fact": "RAG does not guarantee a correct answer: a search may return irrelevant information, and the model may still use it badly.",
+    "source_url": "https://cloud.google.com/use-cases/retrieval-augmented-generation"
+  },
+  {
+    "id": "F14",
+    "fact": "In a typical RAG answer request, retrieval adds information to the model's input; retrieval by itself does not update the model's learned weights.",
+    "source_url": "https://learn.microsoft.com/en-us/azure/search/retrieval-augmented-generation-overview"
+  },
+  {
+    "id": "F15",
+    "fact": "The original 2020 RAG research system did fine-tune its retriever and generator, so it would be inaccurate to say that every RAG system is built without training.",
+    "source_url": "https://arxiv.org/abs/2005.11401"
+  },
+  {
+    "id": "F16",
+    "fact": "Some RAG designs can use search and ranking together; the search setup affects which passages reach the model.",
+    "source_url": "https://learn.microsoft.com/en-us/azure/search/retrieval-augmented-generation-overview"
+  },
+  {
+    "id": "F17",
+    "fact": "A RAG system that searches private documents needs access controls so a user only receives information they are allowed to see.",
+    "source_url": "https://learn.microsoft.com/en-us/azure/search/retrieval-augmented-generation-overview"
+  },
+  {
+    "id": "F18",
+    "fact": "A simple analogy is a student checking class notes before answering a question: the notes are found first, then used to form an answer.",
+    "source_url": "https://cloud.google.com/use-cases/retrieval-augmented-generation"
+  }
+]
