@@ -1,0 +1,5 @@
+# Exact top-level pins make the take-home reproducible across supported OSes.
+langgraph==0.2.74
+openai==1.59.8
+python-dotenv==1.0.1
+pytest==8.3.4

@@ -1,0 +1,21 @@
+# Python environments and bytecode
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Test and tool caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local runtime state and generated deliverables
+data/*.sqlite
+data/*.sqlite3
+outputs/*
+!outputs/.gitkeep
