@@ -1,6 +1,6 @@
 # Prompt Evolution Report
 
-- Generated: 2026-11-14T18:09:14+00:00
+- Generated: 2026-11-14T18:31:16+00:00
 - Active prompt: `1.0` (`lesson_generation_v1.txt`)
 - Chronic failure threshold: at least 3 distinct non-mock runs for one check and rubric version.
 - Threshold rationale: three independent real runs reduce the chance that one injected flaw, transient response, or single unusual lesson drives a persistent prompt change.
@@ -9,7 +9,7 @@
 
 | Data type | Prompt version | Runs | First-pass rate | Total retries |
 | --- | --- | ---: | ---: | ---: |
-| Mock (not real) | `1.0` | 2 | 1/2 (50%) | 1 |
+| Mock (not real) | `1.0` | 4 | 2/4 (50%) | 2 |
 | Real provider | — | 0 | not measured (no live run history) | 0 |
 
 ## Chronic failures
