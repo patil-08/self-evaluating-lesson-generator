@@ -371,6 +371,104 @@ class MemoryStore:
             "human_feedback": [dict(row) for row in human_feedback],
         }
 
+    def evolution_snapshot(
+        self,
+        rubric_version: str,
+        *,
+        chronic_run_threshold: int,
+    ) -> dict[str, Any]:
+        """Return real/mock version metrics and cross-run failure evidence."""
+        if chronic_run_threshold < 1:
+            raise ValueError("chronic_run_threshold must be at least one.")
+        is_real = (
+            "generation_model NOT LIKE 'mock-%' "
+            "AND judge_model NOT LIKE 'mock-%'"
+        )
+        with self._connection() as connection:
+            version_metrics = connection.execute(
+                f"""
+                SELECT prompt_version,
+                    CASE WHEN {is_real} THEN 'real' ELSE 'mock' END AS mode,
+                    COUNT(*) AS run_count,
+                    SUM(CASE WHEN status = 'passed' AND attempt_count = 1
+                             THEN 1 ELSE 0 END) AS first_pass_count,
+                    SUM(CASE WHEN attempt_count > 0
+                             THEN attempt_count - 1 ELSE 0 END) AS total_retries
+                FROM run_history
+                WHERE rubric_version = ?
+                GROUP BY prompt_version, mode
+                ORDER BY prompt_version, mode
+                """,
+                (rubric_version,),
+            ).fetchall()
+            real_run_count = connection.execute(
+                f"SELECT COUNT(*) AS count FROM run_history "
+                f"WHERE {is_real} AND rubric_version = ?",
+                (rubric_version,),
+            ).fetchone()["count"]
+            chronic_rows = connection.execute(
+                f"""
+                SELECT f.check_id, f.dimension, f.rubric_version,
+                       COUNT(DISTINCT f.run_id) AS distinct_run_count
+                FROM failure_events f
+                JOIN run_history r ON r.run_id = f.run_id
+                WHERE {is_real} AND f.rubric_version = ?
+                GROUP BY f.check_id, f.dimension, f.rubric_version
+                HAVING COUNT(DISTINCT f.run_id) >= ?
+                ORDER BY distinct_run_count DESC, f.check_id
+                """,
+                (rubric_version, chronic_run_threshold),
+            ).fetchall()
+            effective_fixes = connection.execute(
+                """
+                SELECT check_id, fix_instruction, instructions_sent,
+                       resolved_count, fixed_count
+                FROM fix_effectiveness
+                WHERE rubric_version = ? AND fixed_count > 0
+                ORDER BY fixed_count DESC, resolved_count DESC, check_id
+                """,
+                (rubric_version,),
+            ).fetchall()
+            chronic_failures: list[dict[str, Any]] = []
+            for row in chronic_rows:
+                latest_reason = connection.execute(
+                    f"""
+                    SELECT f.reason
+                    FROM failure_events f
+                    JOIN run_history r ON r.run_id = f.run_id
+                    WHERE {is_real} AND f.rubric_version = ? AND f.check_id = ?
+                    ORDER BY f.created_at DESC, f.id DESC
+                    LIMIT 1
+                    """,
+                    (rubric_version, row["check_id"]),
+                ).fetchone()
+                chronic_failures.append(
+                    {
+                        **dict(row),
+                        "latest_reason": (
+                            latest_reason["reason"] if latest_reason else ""
+                        ),
+                    }
+                )
+            real_topics = connection.execute(
+                f"""
+                SELECT topic, COUNT(*) AS run_count, MAX(created_at) AS latest_run
+                FROM run_history
+                WHERE {is_real} AND rubric_version = ?
+                GROUP BY lower(topic), topic
+                ORDER BY latest_run DESC
+                LIMIT 10
+                """,
+                (rubric_version,),
+            ).fetchall()
+        return {
+            "version_metrics": [dict(row) for row in version_metrics],
+            "real_run_count": int(real_run_count),
+            "chronic_failures": chronic_failures,
+            "real_topics": [dict(row) for row in real_topics],
+            "effective_fixes": [dict(row) for row in effective_fixes],
+        }
+
     def build_lessons_learned(
         self,
         topic: str,

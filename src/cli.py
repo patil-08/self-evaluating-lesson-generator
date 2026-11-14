@@ -12,6 +12,7 @@ from src.agent import ROOT, run_lesson
 from src.checks_code import CodeCheckError
 from src.checks_llm import JudgeOutputError
 from src.config import MAX_RETRIES, ConfigurationError, load_config
+from src.evolution import DEFAULT_CHANGELOG, DEFAULT_EVOLUTION_REPORT, run_evolution
 from src.llm import LLMError
 from src.memory import DEFAULT_MEMORY_PATH, MemoryStore
 from src.rubric import RubricError
@@ -88,6 +89,28 @@ def build_parser() -> argparse.ArgumentParser:
         default=DEFAULT_MEMORY_PATH,
         help="SQLite memory database path",
     )
+    evolve_parser = subparsers.add_parser(
+        "evolve",
+        help="propose a generator prompt from real failure evidence",
+    )
+    evolve_parser.add_argument(
+        "--memory-db",
+        type=Path,
+        default=DEFAULT_MEMORY_PATH,
+        help="SQLite memory database path",
+    )
+    evolve_parser.add_argument(
+        "--report",
+        type=Path,
+        default=DEFAULT_EVOLUTION_REPORT,
+        help="evolution report path",
+    )
+    evolve_parser.add_argument(
+        "--changelog",
+        type=Path,
+        default=DEFAULT_CHANGELOG,
+        help="append-only prompt evolution changelog",
+    )
     return parser
 
 
@@ -140,6 +163,19 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "feedback":
             feedback_id = memory.add_feedback(args.run, args.note)
             print(f"Saved feedback #{feedback_id} for run {args.run}.")
+            return 0
+        if args.command == "evolve":
+            settings = load_config(require_live=False)
+            result = run_evolution(
+                memory,
+                settings,
+                report_path=args.report,
+                changelog_path=args.changelog,
+            )
+            print(f"Evolution report: {result.report_path}")
+            print(f"Decision: {result.decision}")
+            if result.candidate_path:
+                print(f"Candidate prompt: {result.candidate_path}")
             return 0
 
         settings = load_config(require_live=not args.mock)

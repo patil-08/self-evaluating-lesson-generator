@@ -17,12 +17,11 @@ from src.config import MAX_RETRIES, Settings, load_config
 from src.evaluator import EvaluationResult, evaluate_lesson
 from src.llm import LLMClient, ModelRole, UsageSnapshot
 from src.memory import MemoryStore
+from src.prompt_registry import PromptSpec, select_prompt
 from src.rubric import load_rubric
 from src.sources import Fact, load_facts
 
 ROOT = Path(__file__).resolve().parents[1]
-PROMPT_VERSION = "1.0"
-PROMPT_PATH = ROOT / "prompts" / "lesson_generation_v1.txt"
 DEFAULT_LEARNER_PROFILE = (
     "A 12th-grade graduate in India with limited English vocabulary, a "
     "non-English-medium background, and no technical background who wants "
@@ -185,8 +184,8 @@ def _make_outline(topic: str, facts: list[Fact]) -> list[dict[str, Any]]:
     ]
 
 
-def _generation_prompt(state: LessonState) -> str:
-    template = PROMPT_PATH.read_text(encoding="utf-8")
+def _generation_prompt(state: LessonState, prompt_path: Path) -> str:
+    template = prompt_path.read_text(encoding="utf-8")
     context = {
         "topic": state["topic"],
         "learner_profile": state["learner_profile"],
@@ -327,12 +326,18 @@ def build_lesson_graph(
     *,
     max_retries: int = MAX_RETRIES,
     inject_error: str | None = None,
+    prompt_version: str | None = None,
+    prompt_path: str | Path | None = None,
 ):
     """Compile the explicit plan/generate/evaluate/route LangGraph."""
     if not 0 <= max_retries <= MAX_RETRIES:
         raise ValueError(f"max_retries must be between 0 and {MAX_RETRIES}.")
     if inject_error not in _INJECTABLE_ERRORS | {None}:
         raise ValueError(f"Unsupported injected error: {inject_error!r}.")
+    prompt_spec: PromptSpec = select_prompt(
+        version=prompt_version,
+        path=prompt_path,
+    )
 
     def plan_node(state: LessonState) -> dict[str, Any]:
         facts = load_facts()
@@ -349,14 +354,14 @@ def build_lesson_graph(
             "outline": outline,
             "source_facts": source_facts,
             "rubric_version": load_rubric().version,
-            "prompt_version": PROMPT_VERSION,
+            "prompt_version": prompt_spec.version,
             "model_names": _model_names(client),
         }
 
     def generate_node(state: LessonState) -> dict[str, Any]:
         next_attempt = state["attempt"] + 1
         usage_start = _usage_dict(client.usage)
-        prompt = _generation_prompt(state)
+        prompt = _generation_prompt(state, prompt_spec.path)
         response = client.complete(
             prompt,
             role=ModelRole.GENERATION,
@@ -647,6 +652,8 @@ def run_lesson(
     output_dir: str | Path = ROOT / "outputs",
     learner_profile: str = DEFAULT_LEARNER_PROFILE,
     memory_store: MemoryStore | None = None,
+    prompt_version: str | None = None,
+    prompt_path: str | Path | None = None,
 ) -> AgentRunResult:
     """Run a bounded lesson workflow and persist its JSON/Markdown report."""
     normalized_topic = topic.strip()
@@ -690,6 +697,8 @@ def run_lesson(
         client,
         max_retries=max_retries,
         inject_error=inject_error,
+        prompt_version=prompt_version,
+        prompt_path=prompt_path,
     )
     final_state = graph.invoke(initial_state)
     json_path, markdown_path = _write_report(

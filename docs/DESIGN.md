@@ -169,3 +169,25 @@ does not store lesson drafts, API keys, or failure evidence quotes. Feedback
 notes are limited to 2,000 characters; users should not enter secrets or
 personal data. The generator does not silently edit or replace the rubric or
 prompt based on these aggregates.
+
+## Evidence-gated prompt evolution
+
+`python -m src.cli evolve` reads the saved run and retry history. A check is
+considered chronic only after it fails in at least three distinct non-mock runs
+under the current rubric. Three separate runs reduce the chance that one
+deliberately injected error or an unusual response causes a permanent prompt
+change; repeated failures within one run count only once toward this threshold.
+Only source-compatible RAG topics can enter the paired replay because the
+current local source set is RAG-specific.
+
+The command writes a new, unused `prompts/generator_vN.txt` candidate and
+appends its evidence and decision to `CHANGELOG.md`; prior prompt files are
+never overwritten. A candidate is activated only when the deterministic
+calibration suite remains fully passing and a paired real-provider replay over
+at least three distinct prior RAG topics strictly improves the first-pass
+rate. Mock runs may be reported for transparency, but never count toward the
+chronic threshold or adoption gate. Missing credentials, insufficient real
+topics, failed calibration, failed replay, or no chronic failure all leave the
+active prompt unchanged. The report distinguishes historical descriptive
+rates under the current rubric from the paired replay used for an adoption
+decision.
