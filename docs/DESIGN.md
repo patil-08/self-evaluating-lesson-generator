@@ -42,21 +42,15 @@ intelligence or use a readability score as a proxy for understanding.
 
 ```mermaid
 flowchart TD
-    U[Topic and learner profile] --> G[Lesson generator]
-    P[Versioned prompt] --> G
-    M[(Persistent run memory)] --> G
-    G --> L[Draft lesson]
-    L --> J[Hard-check evaluator]
-    R[Versioned rubric and factual sources] --> J
-    J -->|all checks pass| O[Passing lesson and rejection log]
-    J -->|any check fails, attempts remain| X[Rejection record and retry guidance]
+    U[Topic and learner profile] --> P[Plan outline from cited facts]
+    R[Versioned rubric and factual sources] --> P
+    P --> G[Generate with versioned prompt]
+    G --> V[Evaluate every hard check]
+    V --> D{Route}
+    D -->|all checks pass| S[Ship passing lesson and run log]
+    D -->|checks fail, retries remain| X[Record rejection and explicit fixes]
     X --> G
-    J -->|failure on final attempt| F[Explicit failed run and rejection log]
-    J --> E[Failure-pattern learner]
-    X --> E
-    E --> M
-    O --> M
-    F --> M
+    D -->|final attempt failed| H[Escalate with best draft and report]
 ```
 
 ## Components and responsibilities
@@ -68,8 +62,8 @@ flowchart TD
 | Sources | Hold the small, reviewed factual basis used to check claims about RAG. No unsupported claim becomes grounded merely because a model repeats it. |
 | Generator | Produce a structured lesson draft. It does not decide whether its own draft passes. |
 | Evaluator | Apply binary checks for grounding/accuracy, beginner language, a teaching example, jargon explanations, required coverage, and coherent flow. Any failed mandatory check rejects the full draft. |
-| Retry controller | Run generation and evaluation in a finite LangGraph cycle; pass only concrete prior failures to the next generation attempt. |
-| Rejection log | Record attempt number, check, evidence, reason, and the change requested. Keep the final lesson separate from rejected drafts. |
+| Retry controller | LangGraph nodes plan, generate, evaluate, route, regenerate, ship, or escalate; pass concrete prior failures to the next generation attempt. |
+| Rejection log | Save JSON and Markdown with attempt number, check, evidence, requested fixes, observed retry changes, versions, models, and usage. Keep the approved lesson separate from rejected drafts. |
 | Persistent memory | Store run outcomes and learner feedback in SQLite across runs, with schema/version metadata and timestamps. |
 | Failure-pattern learner | Aggregate repeated failure categories from past runs and produce versioned prompt/rubric refinement proposals. Keep the hard-check contract auditable; a refinement must be logged and validated before it can affect future runs. |
 
@@ -83,11 +77,12 @@ needed to resume/audit a run; never persist API keys.
 | `run_id` | string | Unique ID used to associate graph state, logs, and memory records. |
 | `topic` | string | Requested lesson topic. |
 | `learner_profile` | object | Audience description and language/knowledge constraints. |
-| `attempt` | integer | Current generation attempt, starting at 1. |
+| `attempt` | integer | Current generation attempt, starting at 1; counts the initial draft plus retries. |
 | `lesson` | string or null | Most recent generated draft; exposed as final output only after pass. |
 | `check_results` | list of objects | Binary result per check, with evidence and explanation. |
-| `rejection_log` | list of objects | One record per rejected attempt, including failures and requested changes. |
-| `status` | enum | `generating`, `evaluating`, `passed`, or `failed`. |
+| `attempts` | list of objects | Every evaluated draft with hard-check results and token/latency deltas. |
+| `rejection_log` | list of objects | One record per rejected attempt, including evidence, requested fixes, and measured retry changes. |
+| `status` | enum | `generating`, `passed`, or `escalated_to_human`; only `passed` exposes a final lesson. |
 | `memory_context` | list of objects | Relevant, bounded past failure patterns and approved refinements. |
 | `prompt_version` / `rubric_version` | string | Versions used for reproducibility and audit. |
 | `token_usage` / `latency_ms` | object | Per-call and aggregate operational measurements where available. |
@@ -96,9 +91,9 @@ needed to resume/audit a run; never persist API keys.
 
 The initial generation is attempt 1. The controller increments `attempt` once
 per completed generation/evaluation cycle. A failure routes to generation only
-when `attempt < 1 + MAX_RETRIES`; with `MAX_RETRIES = 2`, there can be at most
-three generated drafts. A pass exits immediately. A failure at attempt 3 exits
-to the explicit failed-run output. Thus every run makes at most three
+when `attempt <= max_retries`; with the assignment limit of two retries, there
+can be at most three generated drafts. A pass exits immediately. A failure at
+attempt 3 exits to the explicit human-escalation output. Thus every run makes at most three
 generation calls and cannot loop indefinitely, even if the generator repeatedly
 produces the same invalid lesson or an external call fails. API retries are
 separately bounded and do not change the graph attempt counter.
