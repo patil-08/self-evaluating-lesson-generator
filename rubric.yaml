@@ -1,0 +1,15 @@
+# Hard pass/fail checkpoints. No partial credit.
+# type "code"  -> checked by deterministic Python in src/evaluator.py
+# type "llm"   -> checked by the LLM judge against the sources
+checks:
+  - {id: C1_sections,  type: code, question: "Lesson has the sections: What is it, Why it matters, How it works, Example, Recap."}
+  - {id: C2_sentence_length, type: code, question: "Average sentence length is 16 words or fewer (simple English)."}
+  - {id: C3_jargon_defined, type: code, question: "Every technical term from the jargon list is explained near its first use."}
+  - {id: C4_length, type: code, question: "Lesson is between 500 and 1100 words."}
+  - {id: L1_definition, type: llm, question: "Does the lesson give a clear one-or-two sentence definition of RAG in plain words?"}
+  - {id: L2_why, type: llm, question: "Does it explain WHY RAG matters, naming the real problems (outdated knowledge, no private data, made-up answers)?"}
+  - {id: L3_how, type: llm, question: "Does it explain HOW RAG works as clear ordered steps (retrieve, augment, generate), including embeddings/vector search in simple words?"}
+  - {id: L4_example, type: llm, question: "Does it teach with at least one concrete everyday example or analogy that a 12th-grade student in India would relate to?"}
+  - {id: L5_accurate, type: llm, question: "Is EVERY factual claim supported by the SOURCES, with no false or invented claims (e.g. saying RAG retrains the model)?"}
+  - {id: L6_flow, type: llm, question: "Does it flow in a logical teaching order, with no concept used before it is introduced?"}
+  - {id: L7_limits, type: llm, question: "Does it mention at least one limitation or honest caveat of RAG?"}
