@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -20,17 +19,6 @@ from lessongen.llm import LLMClient
 FIXTURE_DIR = ROOT / "tests" / "fixtures"
 MANIFEST_PATH = FIXTURE_DIR / "manifest.json"
 DEFAULT_REPORT_PATH = ROOT / "docs" / "calibration_report.md"
-NO_EXAMPLE_TEXT = (
-    "RAG uses a search step to find text connected to a question. It then places "
-    "the selected text beside the question. A language model reads both parts "
-    "and writes an answer. A person can compare that answer with the text the "
-    "system found. This process depends on the quality of the supplied information."
-)
-LONG_SENTENCE = (
-    "Many files can contain useful details, so the system must choose text that "
-    "matches the question and place it beside the question before asking the "
-    "language model to write a response based on those supplied details."
-)
 
 
 @dataclass(frozen=True)
@@ -51,81 +39,6 @@ class FixtureResult:
         return frozenset(
             check.check_id for check in self.evaluation.checks if not check.passed
         )
-
-
-def _replace_once(text: str, old: str, new: str, mutation: str) -> str:
-    if old not in text:
-        raise ValueError(f"Fixture mutation {mutation!r} could not find its source text.")
-    return text.replace(old, new, 1)
-
-
-def _section_blocks(lesson: str) -> list[str]:
-    return re.split(r"(?m)(?=^## )", lesson)
-
-
-def _mutate(lesson: str, mutation: str) -> str:
-    if mutation == "false_claim":
-        return _replace_once(
-            lesson,
-            "RAG does not guarantee a correct answer.",
-            "RAG guarantees a correct answer.",
-            mutation,
-        )
-    if mutation == "unexplained_jargon":
-        return _replace_once(
-            lesson,
-            "The system searches for text related to the question.",
-            "The system uses cosine similarity to rank text related to the question.",
-            mutation,
-        )
-    if mutation == "no_example":
-        blocks = _section_blocks(lesson)
-        example_index = next(
-            (i for i, block in enumerate(blocks) if block.startswith("## Example")),
-            None,
-        )
-        if example_index is None:
-            raise ValueError("Fixture mutation 'no_example' could not find its section.")
-        limit_index = next(
-            (i for i, block in enumerate(blocks) if block.startswith("## Limitations")),
-            None,
-        )
-        if limit_index is None or limit_index <= example_index:
-            raise ValueError("Fixture mutation 'no_example' could not find its limits.")
-        blocks[example_index:limit_index] = [NO_EXAMPLE_TEXT + "\n\n"]
-        return "".join(blocks)
-    if mutation == "wrong_order":
-        blocks = _section_blocks(lesson)
-        what_index = next(
-            (i for i, block in enumerate(blocks) if block.startswith("## What")),
-            None,
-        )
-        how_index = next(
-            (i for i, block in enumerate(blocks) if block.startswith("## How")),
-            None,
-        )
-        if what_index is None or how_index is None:
-            raise ValueError("Fixture mutation 'wrong_order' could not find both sections.")
-        blocks[what_index], blocks[how_index] = blocks[how_index], blocks[what_index]
-        return "".join(blocks)
-    if mutation == "long_sentences":
-        anchor = (
-            "A model may not know a new notice or a private guide unless someone "
-            "supplies it."
-        )
-        return _replace_once(lesson, anchor, anchor + " " + LONG_SENTENCE, mutation)
-    if mutation == "missing_section":
-        return _replace_once(lesson, "## Why does RAG matter?", "## Supplied information", mutation)
-    if mutation == "idiom":
-        return _replace_once(
-            lesson,
-            "RAG searches supplied text, adds useful parts to a question, and helps an AI write an answer.",
-            "RAG is a piece of cake to understand. It searches supplied text, adds useful parts to a question, and helps an AI write an answer.",
-            mutation,
-        )
-    if mutation == "missing_limitation":
-        return _replace_once(lesson, "## Limitations\n", "", mutation)
-    raise ValueError(f"Unknown fixture mutation {mutation!r}.")
 
 
 def load_fixtures(manifest_path: str | Path = MANIFEST_PATH) -> list[Fixture]:
@@ -167,17 +80,16 @@ def load_fixtures(manifest_path: str | Path = MANIFEST_PATH) -> list[Fixture]:
                 f"Fixture {fixture_id!r} has expectations inconsistent with {kind!r}."
             )
         seen.add(fixture_id)
-        if kind == "good":
-            relative_path = item.get("path")
-            if not isinstance(relative_path, str):
-                raise ValueError(f"Good fixture {fixture_id!r} needs a path.")
-            lesson = (fixture_dir / relative_path).read_text(encoding="utf-8")
-        else:
-            mutation = item.get("mutation")
-            if not isinstance(mutation, str):
-                raise ValueError(f"Flawed fixture {fixture_id!r} needs a mutation.")
-            base = (fixture_dir / "good_01.md").read_text(encoding="utf-8")
-            lesson = _mutate(base, mutation)
+        relative_path = item.get("path")
+        if not isinstance(relative_path, str):
+            raise ValueError(f"Fixture {fixture_id!r} needs a lesson path.")
+        lesson_path = (fixture_dir / relative_path).resolve()
+        if fixture_dir.resolve() not in lesson_path.parents:
+            raise ValueError(f"Fixture {fixture_id!r} path escapes the fixture folder.")
+        try:
+            lesson = lesson_path.read_text(encoding="utf-8")
+        except OSError as error:
+            raise ValueError(f"Cannot read fixture {fixture_id!r}: {error}") from error
         fixtures.append(Fixture(fixture_id, kind, lesson, frozenset(expected)))
     return fixtures
 
