@@ -48,7 +48,7 @@ flowchart TD
 | `evaluator.py` | Combine every mandatory check and retain the rubric version. |
 | `graph.py` | LangGraph plan, generate, evaluate, route, regenerate, ship, and escalation nodes. |
 | `memory.py` | SQLite run history, failures, effective retry instructions, and human feedback. |
-| `evolve.py` | Create immutable prompt candidates and activate only after calibration and real replay gates. |
+| `evolve.py` | Propose immutable prompt candidates and activate only after calibration and real replay gates. |
 | `cli.py` | Run, memory, feedback, and evolution commands. |
 
 Graph state contains the run ID, topic, learner profile, outline, source facts,
@@ -56,6 +56,20 @@ current and best drafts, attempts, check results, structured retry feedback,
 rejection log, attempt count, final status, model/version identifiers, memory
 signals, and token/latency totals. Secrets and full drafts are not stored in
 SQLite.
+
+SQLite records each failed check's reason and fix instruction, then links that
+failure to the next attempt's result for an effectiveness count. Learner notes
+are accepted with `feedback --run <id> --note "..."`. Up to three short prior
+lessons are included in each generation prompt, and the per-attempt run report
+records whether memory was used and which entries it supplied.
+
+Evolution requires a check to fail across at least three distinct real run IDs.
+It compares the current and proposed prompts on three or more distinct real-run
+topics. It adopts only if fixture calibration does not regress and first-pass
+rate improves on that replay set. Mock replay can exercise the gate but cannot
+promote a candidate. Each decision appends before/after first-pass and retry
+counts to `docs/evolution_report.md`; candidate and active prompt files are
+immutable.
 
 ## Termination
 
