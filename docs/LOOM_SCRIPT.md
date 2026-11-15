@@ -14,6 +14,9 @@
   macOS/Linux.
 - The complete ordered sequence is also available as
   `.\scripts\demo.ps1` (Windows) or `bash scripts/demo.sh` (macOS/Linux).
+- On Windows, run the Bash version inside Git Bash, not PowerShell. If launching
+  Git Bash from PowerShell at its default install location, use:
+  `& 'C:\Program Files\Git\bin\bash.exe' -lc 'cd "/c/Project 2026/lesson-gen/genai-lesson-generator" && bash scripts/demo.sh'`.
 
 ## 0:00-3:00 — Face introduction and architecture (3 minutes)
 

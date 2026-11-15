@@ -53,6 +53,14 @@
 - [ ] Run the Bash demo on macOS/Linux if cross-platform execution needs to be
   demonstrated.
 
+On Windows, run `bash scripts/demo.sh` in a Git Bash terminal. Do not run
+`cd "/c/..."` in PowerShell; `/c/...` is Git Bash path syntax. To launch Git
+Bash from PowerShell when it is installed in the default location:
+
+```powershell
+& 'C:\Program Files\Git\bin\bash.exe' -lc 'cd "/c/Project 2026/lesson-gen/genai-lesson-generator" && bash scripts/demo.sh'
+```
+
 To attempt a live run after configuring valid local provider settings, use a
 new output directory so the mock artifact remains available for comparison:
 

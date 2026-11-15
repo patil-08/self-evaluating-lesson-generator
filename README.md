@@ -92,6 +92,15 @@ The scripts run a passing mock lesson, add feedback, catch and repair a delibera
 bash scripts/demo.sh
 ```
 
+On Windows, run the Bash command in Git Bash, not PowerShell. In PowerShell,
+`/c/...` is not a valid Windows path and `bash` may not be on `PATH`. If Git
+Bash is installed in its default location, you can launch the demo from
+PowerShell with:
+
+```powershell
+& 'C:\Program Files\Git\bin\bash.exe' -lc 'cd "/c/Project 2026/lesson-gen/genai-lesson-generator" && bash scripts/demo.sh'
+```
+
 ### Inspect and add to memory
 
 ```powershell
