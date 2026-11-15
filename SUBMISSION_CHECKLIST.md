@@ -23,7 +23,7 @@
 
 ## Verified locally on 2026-11-15
 
-- [x] `python -m pytest -q`: **67 passed**, one third-party LangGraph
+- [x] `python -m pytest -q`: **70 passed**, one third-party LangGraph
   deprecation warning.
 - [x] Mock calibration: 12 fixtures, 4/4 known-good lessons passed, 17/17
   expected flaw checks caught, 204/204 exact check outcomes; real calibration
@@ -48,8 +48,9 @@
   Subsequent live requests timed out; a later attempt returned HTTP 429 because
   the Gemini free-tier daily request quota (20 requests/day) was exceeded, with
   the provider advising a retry in about 14 hours. No live lesson was produced.
-  Retry only after quota reset or a plan/quota change. Keep the key in the
-  ignored local `.env`; do not paste it into chat or commit it.
+  The client now surfaces quota errors without retrying them. Retry only after
+  quota reset or a plan/quota change. Keep the key in the ignored local `.env`;
+  do not paste it into chat or commit it.
 - [ ] Record and review the 15–20 minute video. The script is prepared, but no
   recording is attached. Keep your face visible and do not show secrets.
 - [ ] Upload the GitHub repository, document, and video link to the submission
