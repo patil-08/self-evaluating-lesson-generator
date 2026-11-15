@@ -43,13 +43,13 @@
 
 ## Still requires human/provider access
 
-- [ ] A successful live-provider generation and judge run. Attempts on
-  2026-11-15, including one after the local credential was reported updated,
-  returned HTTP 400: “Please pass a valid API key.” Verify that `LLM_API_KEY`
-  is the actual key for the configured `LLM_BASE_URL`; ensure the `.env` edit
-  was saved and is not overridden by a process environment variable. Do not
-  paste a key into chat or commit it; keep provider settings only in the
-  ignored local `.env`.
+- [ ] A successful live-provider generation and judge run. The local Gemini
+  model was updated after the provider reported the old model unavailable.
+  Subsequent live requests timed out; a later attempt returned HTTP 429 because
+  the Gemini free-tier daily request quota (20 requests/day) was exceeded, with
+  the provider advising a retry in about 14 hours. No live lesson was produced.
+  Retry only after quota reset or a plan/quota change. Keep the key in the
+  ignored local `.env`; do not paste it into chat or commit it.
 - [ ] Record and review the 15–20 minute video. The script is prepared, but no
   recording is attached. Keep your face visible and do not show secrets.
 - [ ] Upload the GitHub repository, document, and video link to the submission
