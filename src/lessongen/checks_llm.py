@@ -40,6 +40,8 @@ def _build_prompt(
     checks: list[dict[str, Any]],
     facts: list[Fact],
     prompt_path: str | Path | None = None,
+    *,
+    include_mock_payload: bool,
 ) -> str:
     path = Path(prompt_path) if prompt_path else JUDGE_PROMPT_PATH
     template = path.read_text(encoding="utf-8")
@@ -58,10 +60,15 @@ def _build_prompt(
         for item in checks
         if item["type"] == "llm"
     ]
-    return (
+    prompt = (
         template.replace("{{checks}}", json.dumps(checks_payload, ensure_ascii=False))
         .replace("{{facts}}", json.dumps(facts_payload, ensure_ascii=False))
         .replace("{{lesson}}", lesson)
+    )
+    if not include_mock_payload:
+        return prompt
+    return (
+        prompt
         + "\n\nEvaluation input:\n"
         + json.dumps(
             {
@@ -140,7 +147,12 @@ def evaluate_llm_checks(
     if len(known_ids) != len(loaded_facts):
         raise JudgeOutputError("Source facts contain duplicate IDs.")
 
-    prompt = _build_prompt(lesson, checks, loaded_facts)
+    prompt = _build_prompt(
+        lesson,
+        checks,
+        loaded_facts,
+        include_mock_payload=client.settings.mock_llm,
+    )
     data, _ = client.complete_json(
         prompt,
         role=ModelRole.JUDGE,
