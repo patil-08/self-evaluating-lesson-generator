@@ -68,6 +68,7 @@ def _markdown_report(report: dict[str, Any]) -> str:
         f"# Lesson rejection log: {report['topic']}",
         "",
         f"- **Final status:** {report['final_status']}",
+        f"- **Execution mode:** {report['execution_mode']}",
         f"- **Attempts:** {report['attempt_count']} (maximum retries: {report['max_retries']})",
         f"- **Rubric version:** {report['rubric_version']}",
         f"- **Generator prompt:** {report['prompt_versions']['generator']}",
@@ -131,8 +132,10 @@ def _write_outputs(
         encoding="utf-8",
     )
     if state["status"] == "SHIPPED":
+        (output_dir / "best_draft.md").unlink(missing_ok=True)
         (output_dir / "lesson.md").write_text(state["lesson"], encoding="utf-8")
     else:
+        (output_dir / "lesson.md").unlink(missing_ok=True)
         (output_dir / "best_draft.md").write_text(
             state["best_draft"],
             encoding="utf-8",
@@ -157,6 +160,7 @@ def _run(args: argparse.Namespace) -> int:
     run_id = str(uuid.uuid4())
     report = _write_outputs(state, output_dir, run_id)
     memory.record_run(report)
+    print(f"Execution mode: {report['execution_mode']}.")
     if state["status"] == "SHIPPED":
         print(f"Status: SHIPPED after {state['attempt_count']} attempt(s).")
         print(f"Lesson: {output_dir / 'lesson.md'}")

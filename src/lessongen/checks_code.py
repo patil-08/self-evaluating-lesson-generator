@@ -110,7 +110,11 @@ def _readability(text: str) -> float | None:
 
 def _check_sections(lesson: str, check: dict[str, Any]) -> tuple[bool, str, str]:
     headings = [title for title, _ in _sections(lesson)]
-    order = check.get("parameters", {}).get("required_order", ["what", "why", "how"])
+    parameters = check.get("parameters", {})
+    order = parameters.get(
+        "section_order",
+        parameters.get("required_order", ["what", "why", "how"]),
+    )
     positions = []
     for section_name in order:
         aliases = SECTION_ALIASES.get(section_name)
@@ -131,6 +135,14 @@ def _check_sections(lesson: str, check: dict[str, Any]) -> tuple[bool, str, str]
 
 
 def _check_sentence_length(lesson: str, check: dict[str, Any]) -> tuple[bool, str, str]:
+    parameters = check.get("parameters", {})
+    max_sentence_words = int(parameters.get("max_sentence_words", MAX_SENTENCE_WORDS))
+    minimum_ratio = float(
+        parameters.get("minimum_ratio_at_or_below_max", MIN_SHORT_SENTENCE_RATIO)
+    )
+    absolute_max = int(
+        parameters.get("absolute_max_sentence_words", MAX_SENTENCE_WORDS_HARD)
+    )
     sentences = [
         sentence.strip()
         for sentence in SENTENCE_RE.split(_clean(lesson, remove_headings=True))
@@ -139,36 +151,48 @@ def _check_sentence_length(lesson: str, check: dict[str, Any]) -> tuple[bool, st
     if not sentences:
         return False, "No lesson sentences were found.", ""
     lengths = [len(_words(sentence)) for sentence in sentences]
-    ratio = sum(length <= MAX_SENTENCE_WORDS for length in lengths) / len(lengths)
+    ratio = sum(length <= max_sentence_words for length in lengths) / len(lengths)
     longest = max(lengths)
-    passed = ratio >= MIN_SHORT_SENTENCE_RATIO and longest <= MAX_SENTENCE_WORDS_HARD
+    passed = ratio >= minimum_ratio and longest <= absolute_max
     evidence = next(
-        (sentence for sentence, count in zip(sentences, lengths) if count > MAX_SENTENCE_WORDS),
+        (
+            sentence
+            for sentence, count in zip(sentences, lengths)
+            if count > max_sentence_words
+        ),
         "",
     )
     return passed, (
-        f"{ratio:.0%} of sentences are at most {MAX_SENTENCE_WORDS} words; "
-        f"the longest has {longest} (hard limit {MAX_SENTENCE_WORDS_HARD})."
+        f"{ratio:.0%} of sentences are at most {max_sentence_words} words; "
+        f"the longest has {longest} (hard limit {absolute_max})."
     ), evidence
 
 
 def _check_readability(lesson: str, check: dict[str, Any]) -> tuple[bool, str, str]:
     score = _readability(lesson)
-    passed = score is not None and score >= MIN_READABILITY_SCORE
+    minimum_score = float(
+        check.get("parameters", {}).get(
+            "minimum_flesch_reading_ease",
+            MIN_READABILITY_SCORE,
+        )
+    )
+    passed = score is not None and score >= minimum_score
     return passed, (
         f"Approximate Flesch Reading Ease is {score:.1f}; minimum is "
-        f"{MIN_READABILITY_SCORE:.1f}." if score is not None
+        f"{minimum_score:.1f}." if score is not None
         else "Readability score could not be calculated."
     ), ""
 
 
 def _check_plain_words(lesson: str, check: dict[str, Any]) -> tuple[bool, str, str]:
-    forbidden = check.get("parameters", {}).get("forbidden_words", ADVANCED_WORDS)
+    parameters = check.get("parameters", {})
+    forbidden = parameters.get("forbidden_words", ADVANCED_WORDS)
+    maximum_hits = int(parameters.get("maximum_hits", MIN_ADVANCED_WORD_HITS))
     hits = [
         word for word in forbidden
         if re.search(r"(?<!\w)" + re.escape(word) + r"(?!\w)", lesson, re.IGNORECASE)
     ]
-    passed = len(hits) <= MIN_ADVANCED_WORD_HITS
+    passed = len(hits) <= maximum_hits
     return passed, f"Configured difficult-word hits: {', '.join(hits) or 'none'}.", ", ".join(hits)
 
 
@@ -221,12 +245,14 @@ def _check_glossary(lesson: str, check: dict[str, Any]) -> tuple[bool, str, str]
         r"(?m)^\s*[-*]\s+(?:\*\*)?([^*:]+?)(?:\*\*)?\s*:\s*(.+)$",
         body,
     )
-    required = check.get("parameters", {}).get("required_terms", [])
+    parameters = check.get("parameters", {})
+    required = parameters.get("required_terms", [])
+    minimum_entries = int(parameters.get("minimum_entries", MIN_GLOSSARY_TERMS))
     missing = [
         term for term in required
         if not any(term.casefold() in entry[0].casefold() and len(_words(entry[1])) >= 3 for entry in entries)
     ]
-    passed = len(entries) >= MIN_GLOSSARY_TERMS and not missing
+    passed = len(entries) >= minimum_entries and not missing
     return passed, (
         f"Glossary has {len(entries)} entries; missing definitions: "
         f"{', '.join(missing) or 'none'}."
@@ -237,27 +263,30 @@ def _check_example(lesson: str, check: dict[str, Any]) -> tuple[bool, str, str]:
     example = _section(lesson, "example")
     if example is None:
         return False, "No everyday example section was found.", ""
-    params = check.get("parameters", {})
+    parameters = check.get("parameters", {})
     familiar = [
-        item for item in params.get("familiar_words", [])
+        item for item in parameters.get("familiar_words", [])
         if re.search(r"(?<!\w)" + re.escape(item) + r"(?!\w)", example, re.IGNORECASE)
     ]
     word_count = len(_words(_clean(example)))
-    passed = bool(familiar) and word_count >= MIN_EXAMPLE_WORDS
+    minimum_words = int(parameters.get("minimum_example_words", MIN_EXAMPLE_WORDS))
+    passed = bool(familiar) and word_count >= minimum_words
     return passed, f"Example has {word_count} words and familiar anchors: {', '.join(familiar) or 'none'}.", example[:220]
 
 
 def _check_example_steps(lesson: str, check: dict[str, Any]) -> tuple[bool, str, str]:
     example = _section(lesson, "example") or ""
     numbered = re.findall(r"(?m)^\s*(?:[-*]\s*)?\d+[.)]\s+", example)
-    markers = check.get("parameters", {}).get("sequence_markers", [])
+    parameters = check.get("parameters", {})
+    markers = parameters.get("sequence_markers", [])
     marker_count = sum(
         len(re.findall(r"(?<!\w)" + re.escape(marker) + r"(?!\w)", example, re.IGNORECASE))
         for marker in markers
     )
     steps = max(len(numbered), marker_count)
-    return steps >= MIN_WORKED_EXAMPLE_STEPS, (
-        f"Found {steps} ordered example steps; at least {MIN_WORKED_EXAMPLE_STEPS} are required."
+    minimum_steps = int(parameters.get("minimum_steps", MIN_WORKED_EXAMPLE_STEPS))
+    return steps >= minimum_steps, (
+        f"Found {steps} ordered example steps; at least {minimum_steps} are required."
     ), example[:220]
 
 
@@ -272,10 +301,13 @@ def _check_limits(lesson: str, check: dict[str, Any]) -> tuple[bool, str, str]:
 
 def _check_length(lesson: str, check: dict[str, Any]) -> tuple[bool, str, str]:
     count = len(_words(_clean(lesson)))
-    passed = MIN_LESSON_WORDS <= count <= MAX_LESSON_WORDS
+    parameters = check.get("parameters", {})
+    minimum_words = int(parameters.get("minimum_words", MIN_LESSON_WORDS))
+    maximum_words = int(parameters.get("maximum_words", MAX_LESSON_WORDS))
+    passed = minimum_words <= count <= maximum_words
     return passed, (
         f"Lesson contains {count} words; allowed range is "
-        f"{MIN_LESSON_WORDS}-{MAX_LESSON_WORDS}."
+        f"{minimum_words}-{maximum_words}."
     ), ""
 
 

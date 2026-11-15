@@ -47,6 +47,10 @@ checks:
     fail_examples:
       - "Only 7 of 10 prose sentences meet the 20-word target."
       - "One sentence has 35 words."
+    parameters:
+      max_sentence_words: 20
+      minimum_ratio_at_or_below_max: 0.9
+      absolute_max_sentence_words: 30
 
   - id: BEGIN-03
     dimension: beginner_friendly_language
@@ -56,6 +60,8 @@ checks:
     pass_criteria: "The approximate score is 60 or higher; this is only a readability screen."
     fail_examples:
       - "The approximate score is 48."
+    parameters:
+      minimum_flesch_reading_ease: 60
 
   - id: BEGIN-04
     dimension: beginner_friendly_language
@@ -67,6 +73,7 @@ checks:
       - "The lesson uses 'utilize' when 'use' is clear."
       - "The lesson uses 'subsequently' instead of 'next'."
     parameters:
+      maximum_hits: 0
       forbidden_words:
         - aforementioned
         - commence
@@ -286,3 +293,6 @@ checks:
     fail_examples:
       - "The lesson is too short to explain the required ideas."
       - "The lesson is far longer than the requested beginner lesson."
+    parameters:
+      minimum_words: 300
+      maximum_words: 750

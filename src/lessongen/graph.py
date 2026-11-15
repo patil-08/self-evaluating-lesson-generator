@@ -71,6 +71,7 @@ class AgentState(TypedDict, total=False):
     completion_tokens: int
     total_tokens: int
     latency_ms: float
+    execution_mode: Literal["mock", "live"]
     usage: dict[str, int | float]
     generation_memory: list[dict[str, Any]]
 
@@ -216,8 +217,10 @@ def build(
     memory_path: str | None = None,
 ) -> Any:
     """Build the workflow; max_retries counts retries after the initial draft."""
-    if max_retries < 0:
-        raise GraphInputError("max_retries must be zero or greater.")
+    if not isinstance(max_retries, int) or isinstance(max_retries, bool):
+        raise GraphInputError("max_retries must be an integer.")
+    if max_retries < 0 or max_retries > MAX_RETRIES:
+        raise GraphInputError(f"max_retries must be between zero and {MAX_RETRIES}.")
     if inject_error is not None and inject_error not in INJECTION_TYPES:
         raise GraphInputError(
             f"inject_error must be one of: {', '.join(INJECTION_TYPES)}."
@@ -273,6 +276,9 @@ def build(
                 "generation": active_client._model_for(ModelRole.GENERATION),
                 "judge": active_client._model_for(ModelRole.JUDGE),
             },
+            "execution_mode": (
+                "mock" if active_client.settings.mock_llm else "live"
+            ),
         }
 
     def generate(state: AgentState) -> dict[str, Any]:
@@ -401,7 +407,7 @@ def build(
         return {**finish("SHIPPED"), "lesson": state["drafts"][-1]}
 
     def escalate(state: AgentState) -> dict[str, Any]:
-        return finish("ESCALATED")
+        return {**finish("ESCALATED"), "attempt_count": state["attempt_count"]}
 
     graph = StateGraph(AgentState)
     for name, function in (
@@ -431,8 +437,15 @@ def build(
 
     def invoke(input_state: dict[str, Any]) -> AgentState:
         retries = input_state.get("max_retries", max_retries)
-        if not isinstance(retries, int) or retries < 0:
-            raise GraphInputError("max_retries must be zero or greater.")
+        if (
+            not isinstance(retries, int)
+            or isinstance(retries, bool)
+            or retries < 0
+            or retries > MAX_RETRIES
+        ):
+            raise GraphInputError(
+                f"max_retries must be between zero and {MAX_RETRIES}."
+            )
         error = input_state.get("inject_error", inject_error)
         if error is not None and error not in INJECTION_TYPES:
             raise GraphInputError(f"Unknown injected error {error!r}.")
@@ -456,6 +469,7 @@ def rejection_report(state: AgentState) -> dict[str, Any]:
         "rubric_version": state["rubric_version"],
         "prompt_versions": state["prompt_versions"],
         "model_names": state["model_names"],
+        "execution_mode": state["execution_mode"],
         "usage": state["usage"],
         "generation_memory": state.get("generation_memory", []),
         "attempts": state["attempt_results"],

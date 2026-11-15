@@ -63,6 +63,15 @@ def test_retry_cap_escalates_without_shipping_a_failing_lesson() -> None:
     assert result["feedback"][0]["fix_instruction"]
 
 
+def test_retry_limit_cannot_exceed_the_configured_cap() -> None:
+    with pytest.raises(ValueError, match="between zero and 2"):
+        build(client=_mock_client(), max_retries=3)
+
+    workflow = build(client=_mock_client(), max_retries=2)
+    with pytest.raises(ValueError, match="between zero and 2"):
+        workflow.invoke({"topic": "Introduction to RAG", "max_retries": 3})
+
+
 @pytest.mark.parametrize(
     ("injection", "failed_check"),
     [
@@ -124,6 +133,7 @@ def test_full_mock_run_repairs_and_writes_both_rejection_logs(tmp_path, monkeypa
         "generation": "mock-generation",
         "judge": "mock-judge",
     }
+    assert report["execution_mode"] == "mock"
     assert set(report["usage"]) >= {
         "prompt_tokens",
         "completion_tokens",
@@ -133,6 +143,33 @@ def test_full_mock_run_repairs_and_writes_both_rejection_logs(tmp_path, monkeypa
     assert (output / "lesson.md").is_file()
     assert (output / "rejection_log.md").is_file()
     assert not (output / "best_draft.md").exists()
+
+
+def test_reusing_output_directory_never_leaves_a_stale_shipped_lesson(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("LESSONGEN_MEMORY_DB", str(tmp_path / "memory.sqlite3"))
+    output = tmp_path / "lesson-output"
+    assert main(["run", "--mock", "--out", str(output)]) == 0
+    assert (output / "lesson.md").is_file()
+
+    assert main(
+        [
+            "run",
+            "--mock",
+            "--inject-error",
+            "false_claim",
+            "--max-retries",
+            "0",
+            "--out",
+            str(output),
+        ]
+    ) == 2
+    report = json.loads((output / "rejection_log.json").read_text(encoding="utf-8"))
+    assert report["final_status"] == "ESCALATED"
+    assert not (output / "lesson.md").exists()
+    assert (output / "best_draft.md").is_file()
 
 
 def test_feedback_memory_and_evolve_subcommands(tmp_path, monkeypatch, capsys) -> None:
