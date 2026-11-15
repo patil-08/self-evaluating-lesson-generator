@@ -12,7 +12,6 @@ from typing import Any, Callable
 
 from openai import (
     APIConnectionError,
-    APIError,
     APIStatusError,
     APITimeoutError,
     InternalServerError,
@@ -175,6 +174,14 @@ class LLMClient:
 
     def _mock_content(self, prompt: str, role: ModelRole) -> str:
         if role is ModelRole.GENERATION:
+            if prompt.startswith("Create a concise lesson outline"):
+                return (
+                    "1. Define RAG using the reviewed facts.\n"
+                    "2. Explain its value for supplied, newer, or private documents.\n"
+                    "3. Teach retrieve, augment, and generate in order.\n"
+                    "4. Use a familiar school-notice example.\n"
+                    "5. State limitations and recap the process."
+                )
             return _MOCK_LESSON
         marker = "Evaluation input:\n"
         payload: dict[str, Any] = {}

@@ -141,7 +141,7 @@ def evaluate_llm_checks(
         raise JudgeOutputError("Source facts contain duplicate IDs.")
 
     prompt = _build_prompt(lesson, checks, loaded_facts)
-    data, _response = client.complete_json(
+    data, _ = client.complete_json(
         prompt,
         role=ModelRole.JUDGE,
         system_prompt=(

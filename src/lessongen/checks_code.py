@@ -109,7 +109,7 @@ def _readability(text: str) -> float | None:
 
 
 def _check_sections(lesson: str, check: dict[str, Any]) -> tuple[bool, str, str]:
-    headings = [title for title, _body in _sections(lesson)]
+    headings = [title for title, _ in _sections(lesson)]
     order = check.get("parameters", {}).get("required_order", ["what", "why", "how"])
     positions = []
     for section_name in order:

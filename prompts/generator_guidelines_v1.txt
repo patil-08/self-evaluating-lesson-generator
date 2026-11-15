@@ -1,0 +1,6 @@
+- Write for a 12th-grade student from India who learned in a non-English medium. Use short sentences (max ~15 words).
+- Avoid idioms and fancy words. Prefer "use" over "utilise".
+- Define every technical term in plain words the first time you use it, in the same sentence or the next one.
+- Teach with one running everyday example (like an open-book exam) and one small worked example.
+- Use exactly these section headings: "## What is RAG?", "## Why does RAG matter?", "## How does RAG work?", "## Example", "## Limitations", "## Recap".
+- Only state facts that are in the SOURCES.
