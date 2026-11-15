@@ -16,7 +16,6 @@ from openai import (
     APITimeoutError,
     InternalServerError,
     OpenAI,
-    RateLimitError,
 )
 
 from lessongen.config import (
@@ -168,11 +167,10 @@ class LLMClient:
                 APIConnectionError,
                 APITimeoutError,
                 InternalServerError,
-                RateLimitError,
             ),
         ) or (
             isinstance(error, APIStatusError)
-            and (error.status_code == 429 or error.status_code >= 500)
+            and error.status_code >= 500
         )
 
     def _mock_content(self, prompt: str, role: ModelRole) -> str:
