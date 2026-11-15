@@ -37,10 +37,11 @@ _FENCE_RE = re.compile(
 _MOCK_LESSON = """# Introduction to RAG
 
 ## What is RAG?
-RAG means Retrieval-Augmented Generation. It helps an AI find useful text before it writes an answer. A language model is an AI program that reads and writes words.
+RAG, short for Retrieval-Augmented Generation, is a way for AI to find useful text before writing an answer. A language model is an AI program that reads and writes words.
 
 ## Why does RAG matter?
 A model may not know a new notice or a private guide unless someone supplies it. RAG can use supplied documents to make an answer more useful. It can also show the text used, so a person can check the answer.
+For example, a learning app could search a lesson guide supplied by a learner. This can help answer questions about that guide, but the result still depends on the text the search finds.
 
 ## How does RAG work?
 First, long documents can be split into small pieces called chunks. An embedding is a list of numbers that carries some meaning from text. A vector database stores these number patterns for search.
@@ -196,7 +197,8 @@ class LLMClient:
             evidence = ""
             if check_id == "ACC-01":
                 unsupported = re.search(
-                    r"(?:retrain\w* the model|guarantees? (?:a )?(?:correct|right) answer|"
+                    r"(?:retrain\w* the model|"
+                    r"(?<!not )guarantees? (?:a )?(?:correct|right) answer|"
                     r"cosine similarity ranks)",
                     lesson,
                     re.IGNORECASE,
@@ -207,29 +209,65 @@ class LLMClient:
                     reason = "This claim is unsupported or conflicts with the supplied facts."
                 else:
                     reason = "The definition is consistent with the supplied RAG facts."
-                    evidence = "RAG means Retrieval-Augmented Generation"
+                    evidence = "RAG, short for Retrieval-Augmented Generation"
             elif check_id in {"L1_definition", "BEGIN-01"}:
-                passed = "what is rag" in lesson.lower() and "RAG means" in lesson
+                passed = "what is rag" in lesson.lower() and (
+                    "RAG means" in lesson or "RAG, short for" in lesson
+                )
                 reason = "The lesson gives a plain definition." if passed else "The RAG definition is missing."
             elif check_id in {"L4_example", "EXAMPLE-03"}:
                 passed = "## Example" in lesson or "## Everyday" in lesson
                 evidence = "## Example" if passed else ""
                 reason = "An everyday example is present." if passed else "The lesson has no everyday example."
-            elif check_id == "L7_limits":
+            elif check_id in {"L7_limits", "LIMIT-01"}:
                 passed = "## Limitations" in lesson or "## Limits" in lesson
                 evidence = "## Limitations" if passed else ""
                 reason = "A limitations section is present." if passed else "The lesson has no limitations section."
-            elif check_id == "L2_why":
+            elif check_id in {"L2_why", "COVER-02"}:
                 passed = "## Why" in lesson
                 evidence = "## Why" if passed else ""
                 reason = "The lesson explains why RAG matters." if passed else "The why section is missing."
+                if passed and check_id == "COVER-02":
+                    passed = all(
+                        word in lesson.lower()
+                        for word in ("retrieval", "augment", "generate")
+                    )
+                    reason = (
+                        "The lesson covers the definition, value, and three actions."
+                        if passed
+                        else "The explanation omits one or more RAG actions."
+                    )
             elif check_id == "L3_how":
                 passed = "## How" in lesson and all(word in lesson.lower() for word in ("retrieve", "augment", "generate"))
                 evidence = "## How" if passed else ""
                 reason = "The lesson describes the three main actions." if passed else "The process steps are incomplete."
-            elif check_id == "L6_flow":
-                passed = lesson.find("## What") < lesson.find("## Why") < lesson.find("## How")
+            elif check_id in {"L6_flow", "FLOW-01"}:
+                indices = [
+                    lesson.find(heading)
+                    for heading in (
+                        "## What",
+                        "## Why",
+                        "## How",
+                        "## Example",
+                        "## Limitations",
+                        "## Recap",
+                    )
+                ]
+                passed = all(index >= 0 for index in indices) and indices == sorted(indices)
                 reason = "The main ideas are introduced in teaching order." if passed else "The lesson sections are out of order."
+            elif check_id == "JARG-02":
+                jargon = re.search(
+                    r"\b(?:cosine similarity|HNSW|BM25|non-parametric memory)\b",
+                    lesson,
+                    re.IGNORECASE,
+                )
+                passed = jargon is None
+                evidence = jargon.group(0) if jargon else ""
+                reason = (
+                    "No configured unexplained specialized term was found."
+                    if passed
+                    else "A specialized term is not explained."
+                )
             output.append(
                 {
                     "check_id": check_id,

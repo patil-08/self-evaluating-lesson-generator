@@ -1,0 +1,288 @@
+version: "1.0"
+title: "Introduction to RAG: blocking pass/fail checks"
+decision_rule: "Every check is mandatory; one failure rejects the lesson."
+checks:
+  - id: ACC-01
+    dimension: accurate_and_grounded
+    type: llm
+    severity: hard
+    question: "Is every factual claim supported by the reviewed source facts, with no contradicted or unsupported claim?"
+    pass_criteria: "Extract each atomic factual claim, quote the exact lesson text, cite valid supporting fact IDs, and pass only when every claim is supported."
+    fail_examples:
+      - "The lesson says retrieval makes every answer correct."
+      - "A factual claim has no source support or cites an unrelated fact."
+    parameters:
+      require_atomic_claims: true
+      fail_on_unsupported: true
+      fail_on_contradicted: true
+
+  - id: COVER-01
+    dimension: covers_key_points
+    type: code
+    severity: hard
+    question: "Are the What, Why, and How sections present in that teaching order?"
+    pass_criteria: "Markdown headings identify the definition, importance, and process sections in order."
+    fail_examples:
+      - "The lesson has no section on why RAG matters."
+      - "The how section appears before the what section."
+    parameters:
+      required_order: ["what", "why", "how"]
+
+  - id: BEGIN-01
+    dimension: beginner_friendly_language
+    type: llm
+    severity: hard
+    question: "Can a reader with no technical background follow the lesson without unstated knowledge?"
+    pass_criteria: "Ideas use direct, respectful language and explain unfamiliar concepts without assuming prior AI knowledge."
+    fail_examples:
+      - "The lesson assumes the reader knows how a language model works."
+      - "The lesson is dense, academic, or talks down to the adult learner."
+
+  - id: BEGIN-02
+    dimension: beginner_friendly_language
+    type: code
+    severity: hard
+    question: "Are almost all sentences short, with no severe run-on?"
+    pass_criteria: "At least 90 percent of prose sentences have at most 20 words, and none has more than 30."
+    fail_examples:
+      - "Only 7 of 10 prose sentences meet the 20-word target."
+      - "One sentence has 35 words."
+
+  - id: BEGIN-03
+    dimension: beginner_friendly_language
+    type: code
+    severity: hard
+    question: "Does the approximate Flesch Reading Ease score reach 60?"
+    pass_criteria: "The approximate score is 60 or higher; this is only a readability screen."
+    fail_examples:
+      - "The approximate score is 48."
+
+  - id: BEGIN-04
+    dimension: beginner_friendly_language
+    type: code
+    severity: hard
+    question: "Does the lesson avoid the configured unnecessarily formal vocabulary?"
+    pass_criteria: "No configured avoidable advanced word appears in the lesson."
+    fail_examples:
+      - "The lesson uses 'utilize' when 'use' is clear."
+      - "The lesson uses 'subsequently' instead of 'next'."
+    parameters:
+      forbidden_words:
+        - aforementioned
+        - commence
+        - consequently
+        - facilitate
+        - henceforth
+        - implementation
+        - leverage
+        - methodology
+        - optimization
+        - approximately
+        - utilize
+        - subsequently
+        - functionality
+
+  - id: STYLE-01
+    dimension: beginner_friendly_language
+    type: code
+    severity: hard
+    question: "Does the lesson avoid idioms and heavy use of phrasal verbs?"
+    pass_criteria: "No configured idiom appears and listed phrasal verbs are at most two per 100 words."
+    fail_examples:
+      - "The lesson says 'hit the ground running'."
+      - "A 200-word lesson uses six listed phrasal verbs."
+    parameters:
+      idioms:
+        - "piece of cake"
+        - "hit the ground running"
+        - "at the end of the day"
+        - "get the hang of"
+        - "in a nutshell"
+        - "on the same page"
+        - "deep dive"
+        - "break the ice"
+        - "in the loop"
+        - "think outside the box"
+        - "silver bullet"
+        - "move the needle"
+      phrasal_verbs:
+        - "look up"
+        - "set up"
+        - "find out"
+        - "come up with"
+        - "bring in"
+        - "carry out"
+        - "point out"
+        - "run into"
+        - "go through"
+        - "get back"
+        - "turn into"
+        - "work out"
+        - "take in"
+        - "put together"
+      maximum_per_100_words: 2
+
+  - id: JARG-01
+    dimension: no_unexplained_jargon
+    type: code
+    severity: hard
+    question: "Is every recognized technical term defined close to its first use?"
+    pass_criteria: "Each recognized term's first use has a plain-language explanation in the same sentence or within twelve following words."
+    fail_examples:
+      - "The lesson uses 'embedding' and defines it much later."
+      - "The lesson expands RAG but never explains what it does."
+    parameters:
+      definition_window_words: 12
+      known_terms:
+        - "retrieval-augmented generation"
+        - "large language model"
+        - "vector database"
+        - "vector search"
+        - "language model"
+        - "embedding"
+        - "embeddings"
+        - "retrieval"
+        - "generation"
+        - "chunk"
+        - "chunks"
+        - "index"
+        - "indexing"
+        - "prompt"
+        - "RAG"
+        - "LLM"
+
+  - id: JARG-02
+    dimension: no_unexplained_jargon
+    type: llm
+    severity: hard
+    question: "Does the lesson avoid other specialized terms without a nearby plain explanation?"
+    pass_criteria: "No unrecognized technical term is left unexplained."
+    fail_examples:
+      - "The lesson introduces cosine similarity without explanation."
+      - "The lesson mentions non-parametric memory without explanation."
+
+  - id: GLOSS-01
+    dimension: no_unexplained_jargon
+    type: code
+    severity: hard
+    question: "Does the lesson include a mini glossary for every required term?"
+    pass_criteria: "A glossary section defines RAG, retrieval, embedding, vector database, and language model."
+    fail_examples:
+      - "The lesson has no glossary."
+      - "The glossary lists a term but gives no definition."
+    parameters:
+      required_terms:
+        - "RAG"
+        - "retrieval"
+        - "embedding"
+        - "vector database"
+        - "language model"
+      minimum_entries: 5
+
+  - id: EXAMPLE-01
+    dimension: teaches_by_example
+    type: code
+    severity: hard
+    question: "Does the lesson include a familiar everyday situation?"
+    pass_criteria: "An example section has at least 35 words and uses a familiar setting or object."
+    fail_examples:
+      - "The only example is an abstract AI workflow."
+      - "The example is one short sentence."
+    parameters:
+      familiar_words:
+        - "school"
+        - "class"
+        - "library"
+        - "bus"
+        - "shop"
+        - "market"
+        - "teacher"
+        - "notes"
+        - "notebook"
+        - "exam"
+        - "cricket"
+        - "recipe"
+        - "food"
+        - "train"
+        - "phone"
+        - "timetable"
+        - "notice"
+        - "homework"
+        - "doctor"
+        - "family"
+        - "college"
+        - "bank"
+      minimum_example_words: 35
+
+  - id: EXAMPLE-02
+    dimension: teaches_by_example
+    type: code
+    severity: hard
+    question: "Does the worked example show at least three ordered actions?"
+    pass_criteria: "The example includes three numbered steps or three sequence markers."
+    fail_examples:
+      - "The example names an analogy but no steps."
+      - "The example has only two actions."
+    parameters:
+      sequence_markers: ["first", "next", "then", "after that", "finally"]
+      minimum_steps: 3
+
+  - id: EXAMPLE-03
+    dimension: teaches_by_example
+    type: llm
+    severity: hard
+    question: "Does the example accurately map finding text, adding it to the question, and writing an answer?"
+    pass_criteria: "The example connects all three RAG actions and does not imply the analogy is exactly how software works."
+    fail_examples:
+      - "The example searches but never uses the found text."
+      - "The analogy claims that RAG always finds the right answer."
+
+  - id: COVER-02
+    dimension: covers_key_points
+    type: llm
+    severity: hard
+    question: "Does the lesson explain what RAG is, why it is useful, and its three main actions?"
+    pass_criteria: "The lesson explains retrieval, augmentation, and generation, and describes relevant documents, private or newer information, and answer limits without overclaiming."
+    fail_examples:
+      - "The lesson names steps but does not explain them."
+      - "The lesson promises that RAG removes all made-up answers."
+
+  - id: LIMIT-01
+    dimension: covers_key_points
+    type: code
+    severity: hard
+    question: "Does a limitations section state a meaningful risk?"
+    pass_criteria: "A limits section says search may retrieve poor information or that RAG does not guarantee correctness."
+    fail_examples:
+      - "The lesson has no limitations section."
+      - "The lesson says RAG guarantees correct answers."
+    parameters:
+      section_aliases: ["limitations", "limits", "what rag cannot do", "what rag does not do"]
+      limitation_phrases:
+        - "does not guarantee"
+        - "doesn't guarantee"
+        - "can be wrong"
+        - "may be wrong"
+        - "still needs checking"
+        - "depends on"
+        - "poor information"
+
+  - id: FLOW-01
+    dimension: coherent_teaching_flow
+    type: llm
+    severity: hard
+    question: "Does each section build on what the learner has already learned?"
+    pass_criteria: "The lesson moves from definition to importance, steps, example, limitations, and recap without an unexplained jump."
+    fail_examples:
+      - "The lesson starts with vector database details before defining RAG."
+      - "The lesson repeats ideas until the steps are unclear."
+
+  - id: LENGTH-01
+    dimension: beginner_friendly_language
+    type: code
+    severity: hard
+    question: "Is the lesson long enough to teach the topic and short enough to stay focused?"
+    pass_criteria: "The lesson contains 300 to 750 words, inclusive."
+    fail_examples:
+      - "The lesson is too short to explain the required ideas."
+      - "The lesson is far longer than the requested beginner lesson."
