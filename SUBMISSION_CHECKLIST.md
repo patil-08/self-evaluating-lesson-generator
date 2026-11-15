@@ -43,9 +43,11 @@
 
 ## Still requires human/provider access
 
-- [ ] A successful live-provider generation and judge run. An earlier live
-  attempt failed with an invalid-key response. Do not paste a key into chat or
-  commit it; set valid provider values only in the ignored local `.env`.
+- [ ] A successful live-provider generation and judge run. A live attempt on
+  2026-11-15 returned HTTP 400: “Please pass a valid API key.” Verify that
+  `LLM_API_KEY` is valid for the configured `LLM_BASE_URL`; do not paste a key
+  into chat or commit it. Keep provider settings only in the ignored local
+  `.env`.
 - [ ] Record and review the 15–20 minute video. The script is prepared, but no
   recording is attached. Keep your face visible and do not show secrets.
 - [ ] Upload the GitHub repository, document, and video link to the submission
