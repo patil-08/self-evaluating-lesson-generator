@@ -15,7 +15,7 @@ from lessongen.evaluator import EvaluationResult, evaluate_lesson, load_rubric
 from lessongen.llm import LLMClient
 
 FIXTURE_DIR = ROOT / "tests" / "fixtures"
-MANIFEST_PATH = FIXTURE_DIR / "manifest.json"
+MANIFEST_PATH = FIXTURE_DIR / "manifest_lessongen.json"
 DEFAULT_REPORT_PATH = ROOT / "docs" / "calibration_report.md"
 
 

@@ -35,6 +35,7 @@ py -3.11 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
 python -m pip install -e .
+python -m pip install -r requirements.txt
 Copy-Item .env.example .env
 ```
 
@@ -45,6 +46,7 @@ python3.11 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install -e .
+python -m pip install -r requirements.txt
 cp .env.example .env
 ```
 
@@ -100,14 +102,15 @@ The command considers chronic failures across distinct real runs, proposes a new
 ```powershell
 python -m scripts.calibrate
 python -m scripts.calibrate --output docs/calibration_report.md
+python -m scripts.calibrate --mock-only --report docs/calibration_report.md
 python -m pytest -q
 ```
 
-Calibration runs the labeled fixture set against evaluator checks; its default report labels the run mode (mock/live). The pytest suite includes bounded retry, mock end-to-end, memory, and evolution-gate tests.
+Calibration runs the labeled fixture set against evaluator checks. Use `--mock-only` to explicitly skip provider calls; `--report` and its `--output` alias select the report path. The current package uses `tests/fixtures/manifest_lessongen.json`; the preserved legacy calibration command uses `tests/fixtures/manifest.json`.
 
 ### Compatibility entry points
 
-`python run.py --topic "Introduction to RAG"` and `python run.py --inject-error` are retained for the original prototype. Use `lessongen.cli` for the current graph, structured reports, memory, and gated evolution. `python -m src.optimize` is a compatibility alias for the gated evolution command.
+`python run.py --topic "Introduction to RAG"` and `python run.py --inject-error` forward to the current package CLI. `python -m lessongen.cli` is the primary entry point. The earlier implementation remains available through `python -m src.cli`; its modules, fixtures, and demo/setup scripts are retained for compatibility. `python -m src.optimize` forwards to the current gated evolution command.
 
 ## Rubric
 
@@ -154,3 +157,10 @@ Known limitations:
 - Provider failures or invalid credentials stop live runs; mock mode is for deterministic development, not evidence of live quality.
 
 Future work could add versioned topic-specific source packs, reviewer adjudication, broader calibration/replay data, and an evaluation dashboard with cost and quality trends.
+
+## Assignment materials
+
+- [FINAL_LESSON.md](FINAL_LESSON.md) is a human-edited, mock-checked fallback, not a live-provider-generated lesson.
+- [SUBMISSION_CHECKLIST.md](SUBMISSION_CHECKLIST.md) records the assignment deliverables.
+- [docs/LOOM_SCRIPT.md](docs/LOOM_SCRIPT.md) and [docs/INTERVIEW_PREP.md](docs/INTERVIEW_PREP.md) contain presentation and interview materials.
+- [CHANGELOG.md](CHANGELOG.md) and [docs/decisions/](docs/decisions/) preserve project history and design decisions.

@@ -1,9 +1,24 @@
-.env
+# Python environments and bytecode
 .venv/
-data/
+venv/
 __pycache__/
 *.py[cod]
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Test and tool caches
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
 .coverage
 htmlcov/
 *.egg-info/
+
+# Local runtime state and generated deliverables
+data/*
+!data/.gitkeep
+outputs/*
+!outputs/.gitkeep

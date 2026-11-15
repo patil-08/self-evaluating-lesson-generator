@@ -69,3 +69,12 @@ is a positive case; a known-good lesson is a negative case.
 - The four good lessons are hand-authored variations of one topic and source pack, so this is a narrow calibration set.
 - The wrong-order fixture also fails JARG-01 because moving the process section first exposes technical terms before their definitions.
 - A live calibration run and human review are still required before making reliability claims.
+
+## Earlier legacy-evaluator calibration snapshot
+
+The original `main` branch recorded a separate mock-only run on 2026-11-14:
+12 fixtures, 4/4 known-good lessons passed, and 204/204 per-check outcomes
+matched expectations. Its legacy evaluator and fixture schema differ from the
+current `lessongen` package, so these results are historical and are not
+combined with the current report above. The original report remains available
+in the `backup/main-before-sync-20261115` branch history.

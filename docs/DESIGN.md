@@ -106,11 +106,14 @@ a failed draft is never shipped as a success.
 
 ## Calibration and evidence limits
 
-Run `python -m scripts.calibrate` from the repository root to evaluate the four
-known-good lessons and eight deliberately flawed cases, then write
-`docs/calibration_report.md`. The fixture manifest records the expected failed
-checks. A wrong-order lesson also introduces technical terms before the
-definition, so both the flow and jargon checks are expected to reject it.
+Run `python -m scripts.calibrate --mock-only` from the repository root to evaluate
+the four known-good lessons and eight deliberately flawed cases, then write
+`docs/calibration_report.md`. The current package calibration uses
+`tests/fixtures/manifest_lessongen.json`; the retained legacy calibration entry
+point uses `tests/fixtures/manifest.json`. Each manifest records the expected
+failed checks for its evaluator. A wrong-order lesson also introduces technical
+terms before the definition, so both the flow and jargon checks are expected to
+reject it.
 
 The report includes lesson-level precision and recall, per-check precision and
 recall, and the expected-versus-actual failed-check table. This calibration

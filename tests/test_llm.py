@@ -1,118 +1,209 @@
-from __future__ import annotations
+from pathlib import Path
 
-import json
-from types import SimpleNamespace
-
-import httpx
 import pytest
 from openai import APIConnectionError
 
-from lessongen.config import ConfigurationError, Settings, load_config
-from lessongen.llm import LLMClient, LLMError, ModelRole, parse_json_response
+from src.config import (
+    API_RETRY_BASE_SECONDS,
+    API_RETRY_MAX_SECONDS,
+    Settings,
+    load_config,
+    ConfigurationError,
+)
+from src.llm import LLMClient, LLMError, ModelRole, parse_json_response
 
 
-def _mock_settings() -> Settings:
-    return Settings(True, None, "https://api.openai.com/v1", "", "")
+def mock_settings() -> Settings:
+    return Settings(
+        mock_llm=True,
+        api_key=None,
+        base_url="https://api.openai.com/v1",
+        gen_model="",
+        judge_model="",
+    )
 
 
-def test_mock_generation_is_deterministic_and_tracks_usage() -> None:
-    client = LLMClient(settings=_mock_settings())
+def live_settings() -> Settings:
+    return Settings(
+        mock_llm=False,
+        api_key="test-key",
+        base_url="https://example.test/v1",
+        gen_model="writer",
+        judge_model="reviewer",
+    )
 
-    first = client.complete("write a lesson")
-    second = client.complete("write a lesson")
+
+def test_mock_mode_returns_deterministic_role_specific_outputs() -> None:
+    client = LLMClient(mock_settings())
+
+    first = client.complete("Write a lesson", role=ModelRole.GENERATION)
+    second = client.complete("A different prompt", role=ModelRole.GENERATION)
+    judge = client.complete_json("Evaluate a lesson")
 
     assert first.content == second.content
-    assert "Introduction to RAG" in first.content
-    assert client.usage.calls == 2
+    assert "Retrieval-Augmented Generation" in first.content
+    assert first.model == "mock-generation"
+    assert judge.data["passed"] is True
+    assert judge.response.model == "mock-judge"
+    assert client.usage.calls == 3
     assert client.usage.total_tokens == 0
+    assert client.usage.latency_ms >= 0
 
 
 @pytest.mark.parametrize(
-    "text",
+    "text,expected",
     [
-        '{"ok": true}',
-        '```json\n{"ok": true}\n```',
-        'Result follows: {"ok": true} thanks.',
+        ('{"passed": true}', {"passed": True}),
+        ("```json\n{\"checks\": []}\n```", {"checks": []}),
+        ("Result follows:\n[1, 2, 3]\nDone.", [1, 2, 3]),
     ],
 )
-def test_json_parser_handles_plain_fenced_and_surrounded_json(text: str) -> None:
-    assert parse_json_response(text) == {"ok": True}
+def test_parse_json_response_handles_plain_fences_and_surrounding_text(
+    text: str, expected: object
+) -> None:
+    assert parse_json_response(text) == expected
 
 
-def test_json_parser_surfaces_invalid_data() -> None:
-    with pytest.raises(LLMError, match="valid JSON"):
-        parse_json_response("not json")
+def test_parse_json_response_rejects_malformed_content() -> None:
+    with pytest.raises(LLMError, match="did not contain valid JSON"):
+        parse_json_response("```json\n{not json}\n```")
 
 
-def test_config_reports_invalid_mock_value(monkeypatch, tmp_path) -> None:
+def test_live_config_requires_key_and_both_models(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("MOCK_LLM", "0")
+    monkeypatch.delenv("LLM_API_KEY", raising=False)
+    monkeypatch.delenv("GEN_MODEL", raising=False)
+    monkeypatch.delenv("JUDGE_MODEL", raising=False)
+
+    with pytest.raises(
+        ConfigurationError,
+        match="LLM_API_KEY, GEN_MODEL, JUDGE_MODEL",
+    ):
+        load_config(dotenv_path="nonexistent-test-env")
+
+
+def test_config_loads_dotenv_without_exposing_api_key(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        "MOCK_LLM=0\n"
+        "LLM_API_KEY=local-test-secret\n"
+        "LLM_BASE_URL=https://provider.example/v1/\n"
+        "GEN_MODEL=writer\n"
+        "JUDGE_MODEL=reviewer\n",
+        encoding="utf-8",
+    )
+    for name in ("MOCK_LLM", "LLM_API_KEY", "LLM_BASE_URL", "GEN_MODEL", "JUDGE_MODEL"):
+        monkeypatch.delenv(name, raising=False)
+
+    settings = load_config(dotenv_path=str(env_file))
+
+    assert settings.mock_llm is False
+    assert settings.api_key == "local-test-secret"
+    assert settings.base_url == "https://provider.example/v1"
+    assert settings.gen_model == "writer"
+    assert settings.judge_model == "reviewer"
+    assert "local-test-secret" not in repr(settings)
+
+
+def test_invalid_mock_flag_has_actionable_error(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("MOCK_LLM", "sometimes")
 
-    with pytest.raises(ConfigurationError, match="MOCK_LLM"):
-        load_config(dotenv_path=tmp_path / "missing.env")
+    with pytest.raises(ConfigurationError, match="MOCK_LLM must be one of"):
+        load_config(dotenv_path="nonexistent-test-env")
 
 
-def test_live_config_error_lists_missing_values(monkeypatch, tmp_path) -> None:
-    monkeypatch.setenv("MOCK_LLM", "0")
-    for key in ("LLM_API_KEY", "GEN_MODEL", "JUDGE_MODEL"):
-        monkeypatch.delenv(key, raising=False)
+class FlakyCompletions:
+    def __init__(self) -> None:
+        self.calls = 0
 
-    with pytest.raises(ConfigurationError) as error:
-        load_config(dotenv_path=tmp_path / "missing.env")
-
-    assert "LLM_API_KEY" in str(error.value)
-    assert "GEN_MODEL" in str(error.value)
-    assert "JUDGE_MODEL" in str(error.value)
-
-
-def test_transient_connection_error_retries_with_exponential_backoff() -> None:
-    sleeps: list[float] = []
-    attempts = 0
-
-    def create(**kwargs):
-        nonlocal attempts
-        attempts += 1
-        if attempts < 3:
-            raise APIConnectionError(request=httpx.Request("POST", "https://test"))
-        usage = SimpleNamespace(prompt_tokens=7, completion_tokens=4)
-        message = SimpleNamespace(content="answer")
-        choice = SimpleNamespace(message=message)
-        return SimpleNamespace(choices=[choice], usage=usage)
-
-    fake_client = SimpleNamespace(
-        chat=SimpleNamespace(
-            completions=SimpleNamespace(create=create),
-        )
-    )
-    settings = Settings(False, "fake-key", "https://test/v1", "gen", "judge")
-    client = LLMClient(settings=settings, client=fake_client, sleep_fn=sleeps.append)
-
-    result = client.complete("prompt", role=ModelRole.GENERATION)
-
-    assert attempts == 3
-    assert sleeps == [1.0, 2.0]
-    assert result.content == "answer"
-    assert result.prompt_tokens == 7
-    assert result.completion_tokens == 4
-    assert client.usage.calls == 1
-
-
-def test_mock_judge_returns_structured_json() -> None:
-    client = LLMClient(settings=_mock_settings())
-    prompt = (
-        "Evaluation input:\n"
-        + json.dumps(
+    def create(self, **_: object) -> object:
+        self.calls += 1
+        if self.calls < 3:
+            raise APIConnectionError(
+                message="temporary network issue",
+                request=None,  # type: ignore[arg-type]
+            )
+        return type(
+            "Completion",
+            (),
             {
-                "lesson": "RAG means Retrieval-Augmented Generation.",
-                "hard_checks": [
-                    {
-                        "check_id": "ACC-01",
-                        "dimension": "accurate_and_grounded",
-                    }
+                "choices": [
+                    type(
+                        "Choice",
+                        (),
+                        {"message": type("Message", (), {"content": "ready"})()},
+                    )()
                 ],
-            }
-        )
+                "usage": type(
+                    "Usage",
+                    (),
+                    {"prompt_tokens": 4, "completion_tokens": 2},
+                )(),
+            },
+        )()
+
+
+class FakeClient:
+    def __init__(self) -> None:
+        self.completions = FlakyCompletions()
+        self.chat = type("Chat", (), {"completions": self.completions})()
+
+
+def test_live_client_retries_transient_errors_with_exponential_backoff() -> None:
+    fake_client = FakeClient()
+    delays: list[float] = []
+    client = LLMClient(
+        live_settings(),
+        client=fake_client,
+        sleep_fn=delays.append,
     )
 
-    data, _response = client.complete_json(prompt)
+    response = client.complete("prompt", role=ModelRole.GENERATION)
 
-    assert data["checks"][0]["check_id"] == "ACC-01"
+    assert response.content == "ready"
+    assert response.model == "writer"
+    assert response.prompt_tokens == 4
+    assert response.completion_tokens == 2
+    assert response.latency_ms >= 0
+    assert fake_client.completions.calls == 3
+    assert delays == [
+        API_RETRY_BASE_SECONDS,
+        min(API_RETRY_BASE_SECONDS * 2, API_RETRY_MAX_SECONDS),
+    ]
+    assert client.usage.total_tokens == 6
+
+
+def test_live_client_reports_error_after_retry_limit() -> None:
+    class AlwaysFails:
+        calls = 0
+
+        def create(self, **_: object) -> object:
+            self.calls += 1
+            raise APIConnectionError(message="offline", request=None)  # type: ignore[arg-type]
+
+    completions = AlwaysFails()
+    fake_client = type(
+        "Client",
+        (),
+        {
+            "chat": type(
+                "Chat",
+                (),
+                {"completions": completions},
+            )()
+        },
+    )()
+    delays: list[float] = []
+    client = LLMClient(live_settings(), client=fake_client, sleep_fn=delays.append)
+
+    with pytest.raises(LLMError, match="failed after 3 retries"):
+        client.complete("prompt")
+
+    assert completions.calls == 4
+    assert delays == [
+        API_RETRY_BASE_SECONDS,
+        API_RETRY_BASE_SECONDS * 2,
+        API_RETRY_BASE_SECONDS * 4,
+    ]

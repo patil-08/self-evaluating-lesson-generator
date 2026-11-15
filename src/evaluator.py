@@ -1,62 +1,94 @@
-"""Two-layer evaluator: deterministic code checks + LLM judge. All checks are strictly pass/fail."""
-import re, yaml, os
-from . import llm
+"""Combine deterministic and semantic checks into one versioned hard decision."""
 
-RUBRIC = yaml.safe_load(open(os.path.join(os.path.dirname(__file__), "..", "rubric.yaml")))["checks"]
-JARGON = ["embedding", "vector database", "llm", "large language model", "hallucination",
-          "retrieval", "prompt", "chunk", "knowledge base", "token", "weights"]
-DEFINE_HINTS = ["means", "is a ", "is an ", "is the ", "are ", "stands for", "called", "(", "—", ":", "is when", "this is"]
-REQUIRED = ["what is", "why", "how", "example", "recap"]
+from __future__ import annotations
 
-def _sentences(text):
-    body = re.sub(r"^#+.*$", "", text, flags=re.M)
-    return [s for s in re.split(r"(?<=[.!?])\s+", body) if len(s.split()) > 2]
+from dataclasses import dataclass
+from pathlib import Path
 
-def code_checks(lesson):
-    out = {}
-    heads = [h.lower() for h in re.findall(r"^#+\s*(.+)$", lesson, flags=re.M)]
-    missing = [r for r in REQUIRED if not any(r in h for h in heads)]
-    out["C1_sections"] = (not missing, f"Missing sections: {missing}" if missing else "ok")
+from src.checks_code import evaluate_code_checks
+from src.checks_llm import evaluate_llm_checks
+from src.llm import LLMClient
+from src.rubric import Rubric, load_rubric
+from src.sources import Fact, load_facts
 
-    sents = _sentences(lesson)
-    avg = sum(len(s.split()) for s in sents) / max(1, len(sents))
-    out["C2_sentence_length"] = (avg <= 16, f"Average sentence length is {avg:.1f} words (limit 16)")
 
-    low, bad = lesson.lower(), []
-    for term in JARGON:
-        i = low.find(term)
-        if i == -1:
-            continue
-        window = low[max(0, i - 80): i + 220]
-        if not any(h in window for h in DEFINE_HINTS):
-            bad.append(term)
-    out["C3_jargon_defined"] = (not bad, f"Terms not explained near first use: {bad}" if bad else "ok")
+@dataclass(frozen=True)
+class EvaluationCheck:
+    check_id: str
+    dimension: str
+    check_type: str
+    passed: bool
+    reason: str
+    evidence_quote: str
 
-    n = len(lesson.split())
-    out["C4_length"] = (500 <= n <= 1100, f"Word count is {n} (allowed 500-1100)")
-    return out
 
-def llm_checks(lesson, sources):
-    qs = [c for c in RUBRIC if c["type"] == "llm"]
-    qtext = "\n".join(f'- {c["id"]}: {c["question"]}' for c in qs)
-    prompt = f"""You are a STRICT reviewer of beginner lessons. Judge the LESSON against each check.
-Rules: answer pass=true ONLY if the check is clearly satisfied. No partial credit. If unsure, fail it.
-For L5_accurate, compare every factual claim to the SOURCES; any unsupported or false claim = fail.
-Give a one-sentence reason for each (for fails: say exactly what is wrong and how to fix it).
+@dataclass(frozen=True)
+class EvaluationResult:
+    rubric_version: str
+    passed: bool
+    checks: tuple[EvaluationCheck, ...]
 
-CHECKS:
-{qtext}
 
-SOURCES:
-{sources}
+def evaluate_lesson(
+    lesson: str,
+    *,
+    client: LLMClient | None = None,
+    facts: list[Fact] | None = None,
+    rubric_path: str | Path | None = None,
+) -> EvaluationResult:
+    """Evaluate every rubric item; pass only when every hard check passes."""
+    rubric: Rubric = load_rubric(rubric_path)
+    active_facts = facts if facts is not None else load_facts()
+    llm_client = client if client is not None else LLMClient()
 
-LESSON:
-{lesson}
+    code_results = evaluate_code_checks(lesson, rubric)
+    llm_results = evaluate_llm_checks(
+        lesson,
+        llm_client,
+        rubric,
+        active_facts,
+    )
+    result_by_id: dict[str, tuple[str, bool, str, str]] = {}
+    for result in code_results:
+        result_by_id[result.check_id] = (
+            "code",
+            result.passed,
+            result.reason,
+            result.evidence_quote,
+        )
+    for result in llm_results:
+        if result.check_id in result_by_id:
+            raise ValueError(f"Duplicate evaluated rubric check ID: {result.check_id}.")
+        result_by_id[result.check_id] = (
+            "llm",
+            result.passed,
+            result.reason,
+            result.evidence_quote,
+        )
 
-Return ONLY JSON: {{"<check_id>": {{"pass": true/false, "reason": "..."}}, ...}}"""
-    data = llm.parse_json(llm.chat(prompt, model_env="JUDGE_MODEL", json_mode=True, temperature=0))
-    return {c["id"]: (bool(data[c["id"]]["pass"]), data[c["id"]]["reason"]) for c in qs}
+    expected_ids = {check.id for check in rubric.checks}
+    actual_ids = set(result_by_id)
+    if expected_ids != actual_ids:
+        missing = sorted(expected_ids - actual_ids)
+        unexpected = sorted(actual_ids - expected_ids)
+        raise ValueError(
+            "Evaluation result does not cover the loaded rubric exactly "
+            f"(missing={missing}, unexpected={unexpected})."
+        )
 
-def evaluate(lesson, sources):
-    merged = {**code_checks(lesson), **llm_checks(lesson, sources)}
-    return [{"id": cid, "passed": ok, "reason": why} for cid, (ok, why) in merged.items()]
+    checks = tuple(
+        EvaluationCheck(
+            check_id=check.id,
+            dimension=check.dimension,
+            check_type=check.type,
+            passed=result_by_id[check.id][1],
+            reason=result_by_id[check.id][2],
+            evidence_quote=result_by_id[check.id][3],
+        )
+        for check in rubric.checks
+    )
+    return EvaluationResult(
+        rubric_version=rubric.version,
+        passed=all(check.passed for check in checks),
+        checks=checks,
+    )

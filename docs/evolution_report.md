@@ -33,3 +33,11 @@
 - First-pass improvement gate: **NOT RUN**.
 
 Mock replay results are explicitly labeled and never authorize adoption. No rubric change was proposed; rubric version remains unchanged.
+
+## Historical legacy-implementation snapshot (2026-11-14)
+
+The original `main` branch recorded four **mock** runs for prompt version `1.0`:
+first-pass rate 2/4 (50%) and two total retries. It recorded zero real-provider
+runs and did not generate or adopt a candidate. This is a separate historical
+run set from the current report above; the mock runs are not real evidence and
+the figures must not be added together.

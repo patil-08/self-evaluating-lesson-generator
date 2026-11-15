@@ -1,108 +1,184 @@
 from __future__ import annotations
 
-import sqlite3
+import json
 
-from lessongen.memory import (
-    add_note,
-    failure_history,
-    failure_patterns,
-    get_generation_lessons,
-    record_run,
-)
+from src.agent import run_lesson
+from src.cli import main
+from src.config import Settings
+from src.llm import LLMClient, ModelRole
+from src.memory import MAX_MEMORY_BLOCK_CHARS, MemoryStore
+
+_FIX = "Define each technical term in plain words at its first use."
 
 
-def _report(run_id: str = "run-1") -> dict:
+def _recorded_run(run_id: str = "prior-run") -> dict:
+    failed_check = {
+        "check_id": "JARG-01",
+        "dimension": "no_unexplained_jargon",
+        "reason": "The first use of embedding was not defined nearby.",
+        "fix_instruction": _FIX,
+    }
     return {
         "run_id": run_id,
         "topic": "Introduction to RAG",
-        "final_status": "SHIPPED",
-        "attempt_count": 2,
+        "status": "passed",
         "attempts": [
             {
                 "attempt": 1,
-                "checks": [
-                    {"check_id": "ACC-01", "passed": False},
-                    {"check_id": "COVER-01", "passed": True},
-                ],
-                "failed_checks": [
-                    {
-                        "check_id": "ACC-01",
-                        "reason": "A claim was unsupported.",
-                        "evidence": "retrains the model",
-                        "fix_instruction": "Remove claims that are absent from sources.",
-                    }
-                ],
+                "all_checks": [{"check_id": "JARG-01", "passed": False}],
             },
             {
                 "attempt": 2,
-                "checks": [
-                    {"check_id": "ACC-01", "passed": True},
-                    {"check_id": "COVER-01", "passed": True},
-                ],
-                "failed_checks": [],
+                "all_checks": [{"check_id": "JARG-01", "passed": True}],
             },
         ],
+        "rejection_log": [
+            {
+                "attempt": 1,
+                "failed_checks": [failed_check],
+                "requested_fixes": [_FIX],
+            }
+        ],
+        "prompt_version": "1.0",
+        "rubric_version": "1.0",
+        "model_names": {
+            "generation": "mock-generation",
+            "judge": "mock-judge",
+        },
+        "memory_influenced": False,
     }
 
 
-def test_memory_tracks_failure_reason_effective_fix_and_feedback_note(tmp_path) -> None:
-    db = tmp_path / "memory.sqlite3"
-    record_run(_report(), path=db)
-    add_note("run-1", "Please include a familiar school example.", path=db)
-
-    patterns = failure_patterns(path=db)
-    assert patterns == [
-        {
-            "check_id": "ACC-01",
-            "run_count": 1,
-            "failure_count": 1,
-            "example_reason": "A claim was unsupported.",
-            "example_fix_instruction": "Remove claims that are absent from sources.",
-            "resolved_count": 1,
-            "unresolved_count": 0,
-        }
-    ]
-    history = failure_history(path=db)
-    assert history[0]["resolved"] == 1
-    assert history[0]["resolved_by_attempt"] == 2
-    assert history[0]["fix_instruction"] == "Remove claims that are absent from sources."
-
-    lessons = get_generation_lessons(path=db)
-    assert any("immediate retry/retries passed" in item["text"] for item in lessons)
-    assert any("school example" in item["text"] for item in lessons)
+def _mock_settings() -> Settings:
+    return Settings(
+        mock_llm=True,
+        api_key=None,
+        base_url="https://api.openai.com/v1",
+        gen_model="",
+        judge_model="",
+    )
 
 
-def test_old_failure_table_is_migrated_without_losing_rows(tmp_path) -> None:
-    db = tmp_path / "legacy.sqlite3"
-    with sqlite3.connect(db) as connection:
-        connection.executescript(
-            """
-            CREATE TABLE runs (
-                run_id TEXT PRIMARY KEY,
-                topic TEXT NOT NULL,
-                status TEXT NOT NULL,
-                attempt_count INTEGER NOT NULL,
-                report_json TEXT NOT NULL,
-                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-            );
-            CREATE TABLE failed_checks (
-                run_id TEXT NOT NULL REFERENCES runs(run_id) ON DELETE CASCADE,
-                attempt INTEGER NOT NULL,
-                check_id TEXT NOT NULL,
-                reason TEXT NOT NULL,
-                evidence TEXT NOT NULL,
-                PRIMARY KEY (run_id, attempt, check_id)
-            );
-            INSERT INTO runs (run_id, topic, status, attempt_count, report_json)
-            VALUES ('old-run', 'RAG', 'ESCALATED', 1, '{}');
-            INSERT INTO failed_checks
-            (run_id, attempt, check_id, reason, evidence)
-            VALUES ('old-run', 1, 'ACC-01', 'Old failure reason', 'old evidence');
-            """
-        )
+def test_memory_persists_failures_and_measures_next_attempt_fix(tmp_path) -> None:
+    db_path = tmp_path / "memory.sqlite3"
+    first_store = MemoryStore(db_path)
+    first_store.record_run(_recorded_run())
 
-    assert failure_patterns(path=db)[0]["example_reason"] == "Old failure reason"
-    details = failure_history(path=db)
-    assert details[0]["reason"] == "Old failure reason"
-    assert details[0]["fix_instruction"] == ""
-    assert details[0]["resolved"] is None
+    reopened_store = MemoryStore(db_path)
+    snapshot = reopened_store.snapshot(rubric_version="1.0")
+    failure = snapshot["failure_counts"][0]
+    effectiveness = snapshot["fix_effectiveness"][0]
+    learned = reopened_store.build_lessons_learned(
+        "Introduction to RAG",
+        "1.0",
+    )
+
+    assert snapshot["run_count"] == 1
+    assert (failure["check_id"], failure["failure_count"]) == ("JARG-01", 1)
+    assert failure["latest_reason"] == (
+        "The first use of embedding was not defined nearby."
+    )
+    assert effectiveness["instructions_sent"] == 1
+    assert effectiveness["resolved_count"] == 1
+    assert effectiveness["fixed_count"] == 1
+    assert "fixed 1/1" in learned.prompt_block
+    assert "JARG-01 failed 1 time(s)" in learned.signals
+    assert len(learned.prompt_block) <= MAX_MEMORY_BLOCK_CHARS
+    assert learned.prompt_block.endswith(
+        "current source facts and hard rubric if any note conflicts."
+    )
+
+
+def test_feedback_and_memory_cli_store_and_display_human_notes(
+    tmp_path,
+    capsys,
+) -> None:
+    db_path = tmp_path / "memory.sqlite3"
+    MemoryStore(db_path).record_run(_recorded_run())
+
+    feedback_exit = main(
+        [
+            "feedback",
+            "--run",
+            "prior-run",
+            "--note",
+            "Keep the school notice example; define new terms immediately.",
+            "--memory-db",
+            str(db_path),
+        ]
+    )
+    assert feedback_exit == 0
+    assert "Saved feedback" in capsys.readouterr().out
+
+    memory_exit = main(["memory", "--memory-db", str(db_path)])
+    output = capsys.readouterr().out
+    assert memory_exit == 0
+    assert "Stored runs: 1" in output
+    assert "JARG-01 (1.0): 1" in output
+    assert "1/1 resolved" in output
+    assert "Keep the school notice example" in output
+
+
+def test_memory_block_stays_bounded_and_keeps_rubric_precedence(tmp_path) -> None:
+    store = MemoryStore(tmp_path / "memory.sqlite3")
+    for index in range(3):
+        run = _recorded_run(f"prior-run-{index}")
+        check_id = f"JARG-{index + 1:02d}"
+        instruction = f"f{index}" * 250
+        failure = run["rejection_log"][0]["failed_checks"][0]
+        failure["check_id"] = check_id
+        failure["reason"] = "reason " * 150
+        failure["fix_instruction"] = instruction
+        run["rejection_log"][0]["requested_fixes"] = [instruction]
+        run["attempts"][0]["all_checks"][0]["check_id"] = check_id
+        run["attempts"][1]["all_checks"][0]["check_id"] = check_id
+        store.record_run(run)
+        store.add_feedback(run["run_id"], "note " * 400)
+
+    learned = store.build_lessons_learned("Introduction to RAG", "1.0")
+
+    assert len(learned.prompt_block) <= MAX_MEMORY_BLOCK_CHARS
+    assert learned.prompt_block.endswith(
+        "current source facts and hard rubric if any note conflicts."
+    )
+    assert "Recurring hard-check failures" in learned.prompt_block
+    assert "Recent human feedback" in learned.prompt_block
+    assert any("fix worked" in signal for signal in learned.signals)
+
+
+def test_prompt_receives_memory_and_report_logs_its_influence(tmp_path) -> None:
+    db_path = tmp_path / "memory.sqlite3"
+    memory = MemoryStore(db_path)
+    memory.record_run(_recorded_run())
+    memory.add_feedback(
+        "prior-run",
+        "Keep the school notice example and explain terms on first use.",
+    )
+
+    class RecordingClient(LLMClient):
+        generation_prompts: list[str] = []
+
+        def complete(self, prompt, *, role=ModelRole.GENERATION, **kwargs):
+            if role is ModelRole.GENERATION:
+                self.generation_prompts.append(prompt)
+            return super().complete(prompt, role=role, **kwargs)
+
+    client = RecordingClient(settings=_mock_settings())
+    result = run_lesson(
+        "Introduction to RAG",
+        client=client,
+        output_dir=tmp_path / "outputs",
+        memory_store=memory,
+    )
+
+    report = json.loads(result.json_path.read_text(encoding="utf-8"))
+    assert result.state["status"] == "passed"
+    assert "Historical lessons learned from persistent memory" in (
+        client.generation_prompts[0]
+    )
+    assert "Keep the school notice example" in client.generation_prompts[0]
+    assert report["memory_influenced"] is True
+    assert "1 recent human feedback note(s)" in report["memory_signals"]
+    assert "**Memory influenced generation:** yes" in (
+        result.markdown_path.read_text(encoding="utf-8")
+    )
