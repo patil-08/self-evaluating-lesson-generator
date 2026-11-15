@@ -1,51 +1,52 @@
-> **Run status:** A live-provider run was not possible because this environment
-> has no live LLM credentials configured. This lesson is a human-edited fallback
-> checked with the deterministic mock evaluator; it is not represented as a
-> real-key generation or a real-model judge result.
+> **Run status:** This is a human-edited fallback checked with the deterministic
+> mock evaluator. It is not a live-provider generation or a real-model judge
+> result.
 
 # Introduction to RAG
 
 ## What is RAG?
 
-RAG means Retrieval-Augmented Generation, a way for an AI to find useful text
-before it writes an answer. A language model is an AI program that receives text
-and writes an answer. RAG gives that program selected information with the
-question.
+RAG, short for Retrieval-Augmented Generation, is a way for AI to find useful
+text before writing an answer. A language model is a computer program that
+reads text and writes an answer.
+
+## Why does RAG matter?
+
+A model may not know a new school notice or a private guide unless someone
+supplies it. RAG searches the supplied text first. This can help an answer use
+details from that text. The system can also show the text it found, so a person
+can check the answer. RAG does not train the model again for each question.
 
 ## How does RAG work?
 
 Before a question arrives, long documents can be split into small pieces called
-chunks. An embedding is a list of numbers that carries some meaning from text.
-A vector database is a tool that stores these number lists for search.
+chunks. A chunk is a small piece of a document. An embedding is a list of
+numbers that carries some meaning from text. A vector database stores these
+number lists so a system can search them.
 
-1. **Retrieve:** Retrieval means finding useful text for a question. The system
-   searches stored text for parts related to the question.
-2. **Augment:** Augment means add the useful text beside the question. The
-   system sends both to the language model.
-3. **Generate:** Generate means write. The language model uses the question and
-   the added text to write an answer.
+1. **Retrieve:** The system finds text related to the question.
+2. **Augment:** It adds the useful text beside the question.
+3. **Generate:** The language model writes an answer using both.
 
-## Everyday worked example
+## Example
 
-Imagine your family has a printed timetable for a local train in India. You
-ask, “What time does the train leave from our station?” This example is only an
-analogy. A real RAG system searches text with software.
+Imagine your family keeps a local train timetable at home. You ask, “What time
+does the train leave?” This is only an analogy. A real RAG system uses software
+to search text.
 
-1. The system finds timetable lines about that station.
-2. It adds a useful line beside your question.
-3. The language model writes a reply using the question and that line.
+1. The system searches the timetable for a line about your station.
+2. It puts that line beside your question.
+3. The language model writes an answer using both.
 
-You can compare the reply with the timetable. The timetable is like saved
-information. Finding a useful line is retrieval. Giving it with the question
-is augmentation. Writing the reply is generation.
+You can check the answer against the timetable. The timetable is like saved
+information. Finding a useful line is retrieval. Adding it beside your question
+is augmentation. Writing an answer is generation.
 
-## Why does RAG matter?
+## Limitations
 
-A model may not have a private guide or a recent notice unless that text is
-provided. RAG can search supplied information before the model answers. This
-can make the answer more useful for questions about those documents. A system
-can show the found text, so a person can check where a detail came from.
-RAG supplies extra text for this answer. It does not train the AI again.
+Search can find poor or unrelated information. RAG does not guarantee a correct
+answer. The model may use the found text badly. A person should check important
+answers.
 
 ## Mini glossary
 
@@ -53,19 +54,12 @@ RAG supplies extra text for this answer. It does not train the AI again.
 - **Retrieval:** Finding useful text for a question.
 - **Embedding:** A list of numbers that carries some meaning from text.
 - **Vector database:** A tool that stores number lists for search.
-- **Language model:** An AI program that receives text and writes an answer.
-
-## Limits
-
-Search can find poor or unrelated information. RAG does not guarantee a
-correct answer. The model may use found information badly, so check important
-answers.
+- **Language model:** A computer program that reads text and writes an answer.
 
 ## Recap
 
-RAG finds useful text, adds it to a question, and uses an AI to write an answer.
-It can help with supplied documents, but a person should still check important
-answers.
+RAG finds useful text, adds it to a question, and asks a language model to write
+an answer. It can help with supplied documents, but it can still be wrong.
 
 ---
 

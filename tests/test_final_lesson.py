@@ -1,8 +1,8 @@
 from pathlib import Path
 
-from src.config import Settings
-from src.evaluator import evaluate_lesson
-from src.llm import LLMClient
+from lessongen.config import Settings
+from lessongen.evaluator import evaluate_lesson
+from lessongen.llm import LLMClient
 
 
 ROOT = Path(__file__).resolve().parents[1]

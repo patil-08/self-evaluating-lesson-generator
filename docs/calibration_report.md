@@ -1,80 +1,42 @@
-# Calibration Report
+# Evaluator Calibration Report
 
-- **Run mode:** mock (deterministic)
-- **Rubric version:** 1.0
-- **Fixtures:** 12 (4 good, 8 flawed)
-- **Targeted flaw checks caught:** 8/8
-- **Good lessons passed:** 4/4
+- Generated: 2026-11-15T16:12:08+00:00
+- Rubric version: `1.0`
+- Fixture set: 12 lessons (4 known-good, 8 deliberately flawed).
+- Decision: every hard check is required; any missed expected failure or rejected good lesson is a calibration failure.
 
-## Overall lesson-level metrics
+## Mock run
 
-A lesson is predicted flawed when any hard check rejects it. A planted flaw
-is a positive case; a known-good lesson is a negative case.
+- Known-good lessons passing: **4/4**.
+- Expected flaw checks caught: **17/17**.
+- Exact per-check outcomes: **204/204**.
+- Calibration result: **PASS**.
 
-| Metric | Count | Rate |
-| --- | ---: | ---: |
-| True positives | 8 | 100.0% recall |
-| False positives | 0 | 0.0% of good lessons rejected |
-| False negatives | 0 | 0.0% of flawed lessons shipped |
-| True negatives | 4 | 100.0% specificity |
-| Precision | - | 100.0% |
-| Recall | - | 100.0% |
+Each matrix cell shows `P` (pass) or `F` (fail). A check succeeds when that result matches the fixture's expectation; `!` marks a mismatch and `E` marks an evaluator error.
 
-## Fixture-by-fixture results
+| Fixture | Expected | Overall | ACC-01 | COVER-01 | BEGIN-01 | BEGIN-02 | BEGIN-03 | BEGIN-04 | STYLE-01 | JARG-01 | JARG-02 | GLOSS-01 | EXAMPLE-01 | EXAMPLE-02 | EXAMPLE-03 | COVER-02 | LIMIT-01 | FLOW-01 | LENGTH-01 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `good-school-notice` | PASS | PASS | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ |
+| `good-library-card` | PASS | PASS | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ |
+| `good-cricket-score` | PASS | PASS | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ |
+| `good-shop-policy` | PASS | PASS | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ |
+| `flaw-false-claim` | FAIL: ACC-01 | FAIL | F✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ |
+| `flaw-unexplained-jargon` | FAIL: ACC-01, JARG-02 | FAIL | F✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | F✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ |
+| `flaw-no-example` | FAIL: EXAMPLE-01, EXAMPLE-02, EXAMPLE-03, FLOW-01 | FAIL | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | F✓ | F✓ | F✓ | P✓ | P✓ | F✓ | P✓ |
+| `flaw-wrong-order` | FAIL: COVER-01, FLOW-01 | FAIL | P✓ | F✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | F✓ | P✓ |
+| `flaw-long-sentences` | FAIL: BEGIN-01, BEGIN-02 | FAIL | P✓ | P✓ | F✓ | F✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ |
+| `flaw-missing-section` | FAIL: COVER-01, COVER-02, FLOW-01 | FAIL | P✓ | F✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | F✓ | P✓ | F✓ | P✓ |
+| `flaw-idioms` | FAIL: BEGIN-01, STYLE-01 | FAIL | P✓ | P✓ | F✓ | P✓ | P✓ | P✓ | F✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ |
+| `flaw-missing-limitation` | FAIL: LIMIT-01 | FAIL | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | P✓ | F✓ | P✓ | P✓ |
 
-| Fixture | Planted flaw | Expected failed checks | Actual failed checks | Result |
-| --- | --- | --- | --- | --- |
-| good_01 | known-good lesson | none | none | PASS |
-| good_02 | known-good lesson | none | none | PASS |
-| good_03 | known-good lesson | none | none | PASS |
-| good_04 | known-good lesson | none | none | PASS |
-| false_claim | deliberately flawed lesson | ACC-01 | ACC-01 | PASS |
-| unexplained_jargon | deliberately flawed lesson | JARG-02 | JARG-02 | PASS |
-| no_example | deliberately flawed lesson | EXAMPLE-01, EXAMPLE-02, EXAMPLE-03, FLOW-01 | EXAMPLE-01, EXAMPLE-02, EXAMPLE-03, FLOW-01 | PASS |
-| wrong_order | deliberately flawed lesson | COVER-01, FLOW-01, JARG-01 | COVER-01, FLOW-01, JARG-01 | PASS |
-| long_sentences | deliberately flawed lesson | BEGIN-02 | BEGIN-02 | PASS |
-| missing_section | deliberately flawed lesson | COVER-01, COVER-02, FLOW-01 | COVER-01, COVER-02, FLOW-01 | PASS |
-| idiom | deliberately flawed lesson | STYLE-01 | STYLE-01 | PASS |
-| missing_limitation | deliberately flawed lesson | FLOW-01, LIMIT-01 | FLOW-01, LIMIT-01 | PASS |
+No per-check mismatches were recorded in this run.
 
-## Per-check precision and recall
+## Real-provider run
 
-| Check | TP | FP | FN | Precision | Recall |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| ACC-01 | 1 | 0 | 0 | 100.0% | 100.0% |
-| COVER-01 | 2 | 0 | 0 | 100.0% | 100.0% |
-| BEGIN-01 | 0 | 0 | 0 | n/a | n/a |
-| BEGIN-02 | 1 | 0 | 0 | 100.0% | 100.0% |
-| BEGIN-03 | 0 | 0 | 0 | n/a | n/a |
-| BEGIN-04 | 0 | 0 | 0 | n/a | n/a |
-| STYLE-01 | 1 | 0 | 0 | 100.0% | 100.0% |
-| JARG-01 | 1 | 0 | 0 | 100.0% | 100.0% |
-| JARG-02 | 1 | 0 | 0 | 100.0% | 100.0% |
-| GLOSS-01 | 0 | 0 | 0 | n/a | n/a |
-| EXAMPLE-01 | 1 | 0 | 0 | 100.0% | 100.0% |
-| EXAMPLE-02 | 1 | 0 | 0 | 100.0% | 100.0% |
-| EXAMPLE-03 | 1 | 0 | 0 | 100.0% | 100.0% |
-| COVER-02 | 1 | 0 | 0 | 100.0% | 100.0% |
-| LIMIT-01 | 1 | 0 | 0 | 100.0% | 100.0% |
-| FLOW-01 | 4 | 0 | 0 | 100.0% | 100.0% |
-| LENGTH-01 | 0 | 0 | 0 | n/a | n/a |
+- Skipped by --mock-only.
 
-`n/a` means no fixture planted that check as a positive, so its check-specific recall is not measured.
+## Calibration caveats
 
-## Interpretation and limitations
+Mock mode is deterministic and is intended for offline regression checks. Its judge uses explicit heuristics for the deliberate false-guarantee, unknown-jargon, missing-section/example, ordering, long-sentence, and idiom cases. For clean lessons, it verifies one representative grounded claim rather than performing full semantic claim extraction. Only a configured real judge can exercise the full prompt-based claim audit; its reported results remain model judgments, not proof of factual truth.
 
-- Exact expected-check mismatches: **0**.
-- This report uses deterministic mock-judge rules; it measures regression behavior, not real-model judgment quality.
-- The semantic mock recognizes only the deliberately planted patterns. Passing this suite does not establish that a live judge is trustworthy on unseen lessons.
-- The four good lessons are hand-authored variations of one topic and source pack, so this is a narrow calibration set.
-- The wrong-order fixture also fails JARG-01 because moving the process section first exposes technical terms before their definitions.
-- A live calibration run and human review are still required before making reliability claims.
-
-## Earlier legacy-evaluator calibration snapshot
-
-The original `main` branch recorded a separate mock-only run on 2026-11-14:
-12 fixtures, 4/4 known-good lessons passed, and 204/204 per-check outcomes
-matched expectations. Its legacy evaluator and fixture schema differ from the
-current `lessongen` package, so these results are historical and are not
-combined with the current report above. The original report remains available
-in the `backup/main-before-sync-20261115` branch history.
+The known-good lessons are curated against the local RAG facts. The deliberately flawed cases are generated from those lessons using the mutations recorded in `tests/fixtures/manifest.json`.
