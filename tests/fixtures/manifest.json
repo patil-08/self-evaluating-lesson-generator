@@ -1,0 +1,76 @@
+{
+  "fixtures": [
+    {
+      "id": "good_01",
+      "kind": "good",
+      "path": "good_01.md",
+      "expected_failures": []
+    },
+    {
+      "id": "good_02",
+      "kind": "good",
+      "path": "good_02.md",
+      "expected_failures": []
+    },
+    {
+      "id": "good_03",
+      "kind": "good",
+      "path": "good_03.md",
+      "expected_failures": []
+    },
+    {
+      "id": "good_04",
+      "kind": "good",
+      "path": "good_04.md",
+      "expected_failures": []
+    },
+    {
+      "id": "false_claim",
+      "kind": "flawed",
+      "mutation": "false_claim",
+      "expected_failures": ["ACC-01"]
+    },
+    {
+      "id": "unexplained_jargon",
+      "kind": "flawed",
+      "mutation": "unexplained_jargon",
+      "expected_failures": ["JARG-02"]
+    },
+    {
+      "id": "no_example",
+      "kind": "flawed",
+      "mutation": "no_example",
+      "expected_failures": ["EXAMPLE-01", "EXAMPLE-02", "EXAMPLE-03", "FLOW-01"]
+    },
+    {
+      "id": "wrong_order",
+      "kind": "flawed",
+      "mutation": "wrong_order",
+      "expected_failures": ["COVER-01", "FLOW-01", "JARG-01"]
+    },
+    {
+      "id": "long_sentences",
+      "kind": "flawed",
+      "mutation": "long_sentences",
+      "expected_failures": ["BEGIN-02"]
+    },
+    {
+      "id": "missing_section",
+      "kind": "flawed",
+      "mutation": "missing_section",
+      "expected_failures": ["COVER-01", "COVER-02", "FLOW-01"]
+    },
+    {
+      "id": "idiom",
+      "kind": "flawed",
+      "mutation": "idiom",
+      "expected_failures": ["STYLE-01"]
+    },
+    {
+      "id": "missing_limitation",
+      "kind": "flawed",
+      "mutation": "missing_limitation",
+      "expected_failures": ["LIMIT-01", "FLOW-01"]
+    }
+  ]
+}

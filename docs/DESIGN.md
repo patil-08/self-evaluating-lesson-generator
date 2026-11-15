@@ -92,7 +92,16 @@ a failed draft is never shipped as a success.
 
 ## Calibration and evidence limits
 
-Known-good and deliberately flawed fixtures test both false rejection and
-expected failure detection. The report states mock and real results separately.
-Deterministic mock checks are regression evidence only; they do not prove that
-a live judge is factually correct. Human review remains necessary.
+Run `python -m scripts.calibrate` from the repository root to evaluate the four
+known-good lessons and eight deliberately flawed cases, then write
+`docs/calibration_report.md`. The fixture manifest records the expected failed
+checks. A wrong-order lesson also introduces technical terms before the
+definition, so both the flow and jargon checks are expected to reject it.
+
+The report includes lesson-level precision and recall, per-check precision and
+recall, and the expected-versus-actual failed-check table. This calibration
+command always uses the deterministic mock judge and does not load `.env`.
+That makes the results reproducible and avoids provider calls, but it does not
+prove that a live judge is factually correct. The fixture set is small and
+focused on one topic; human review and broader live evaluation remain
+necessary.
