@@ -2,6 +2,8 @@
 
 A bounded LangGraph workflow that creates beginner-friendly lessons about retrieval-augmented generation (RAG), checks each draft against a versioned rubric, and either ships a passing lesson or escalates the best draft with a rejection report. A local SQLite memory records outcomes, while a separately gated command can propose prompt improvements from real runs.
 
+The target learner is an Indian 12th-grade graduate who is new to technical subjects and prefers clear, simple English. The lesson is planned from zero knowledge and must explain the topic, its value, its steps, and a familiar worked example.
+
 The included source pack and rubric are RAG-specific; changing the topic alone does not provide suitable facts or checks for an unrelated subject.
 
 ## Architecture
@@ -22,7 +24,7 @@ flowchart LR
     C -->|either gate fails| J[Reject and log decision]
 ```
 
-The graph state keeps the topic, outline, drafts, attempt results, feedback, retry count, and terminal status. Regeneration receives a reason, evidence, and a fix instruction for each failed check; the prompt also asks it to retain previously passing material. There is no unbounded retry edge, and only the all-checks-passing route can ship.
+The graph state keeps the topic, outline, drafts, attempt results, feedback, retry count, and terminal status. Regeneration receives a reason, evidence, and a fix instruction for each failed check; the prompt also asks it to retain previously passing material. The retry cap is two regenerations (three drafts total), and only the all-checks-passing route can ship.
 
 ## Setup
 
@@ -72,11 +74,23 @@ python -m lessongen.cli run --topic "Introduction to RAG" --mock --out outputs/d
 |---|---|
 | `--topic TEXT` | Required lesson topic. |
 | `--inject-error [false_claim\|jargon\|no_example\|bad_order\|long_sentences]` | Deliberately introduces one evaluator-detectable fault for a demo. |
-| `--max-retries N` | Maximum regenerations after the first draft; bounded and defaults to the configured value. |
+| `--max-retries N` | Maximum regenerations after the first draft; must be between 0 and 2. |
 | `--mock` | Use deterministic mock generation and evaluation instead of provider calls. |
 | `--out DIR` | Write the lesson and attempt/rejection reports to this directory. |
 
-Every run writes `rejection_log.json` and `rejection_log.md` as its full audit report. A passing run also writes `lesson.md`; an escalated run writes `best_draft.md` instead, and a failing lesson is not marked shipped. Reports include per-attempt check results, evidence, changes, final status, rubric/prompt versions, model names, token use, and latency. Generated run data and the SQLite database are ignored by Git.
+Every run writes `rejection_log.json` and `rejection_log.md` as its full audit report. A passing run also writes `lesson.md`; an escalated run writes `best_draft.md` instead, and a failing lesson is not marked shipped. Reusing an output directory replaces the opposite-status draft file, so a stale passing lesson cannot remain beside a later escalated report. Reports include execution mode (`mock` or `live`), per-attempt check results, evidence, changes, final status, rubric/prompt versions, model names, token use, and latency. Generated run data and the SQLite database are ignored by Git.
+
+### Reproducible demonstration
+
+The scripts run a passing mock lesson, add feedback, catch and repair a deliberate false claim, show memory influence, and exercise the evolution gate. They retain their database and reports in a unique temporary directory and never call a live provider.
+
+```powershell
+.\scripts\demo.ps1
+```
+
+```bash
+bash scripts/demo.sh
+```
 
 ### Inspect and add to memory
 
@@ -161,6 +175,7 @@ Future work could add versioned topic-specific source packs, reviewer adjudicati
 ## Assignment materials
 
 - [FINAL_LESSON.md](FINAL_LESSON.md) is a human-edited, mock-checked fallback, not a live-provider-generated lesson.
+- `outputs/final/lesson.md` is a deterministic mock run artifact and is ignored by Git; it is not live-provider evidence.
 - [SUBMISSION_CHECKLIST.md](SUBMISSION_CHECKLIST.md) records the assignment deliverables.
 - [docs/LOOM_SCRIPT.md](docs/LOOM_SCRIPT.md) and [docs/INTERVIEW_PREP.md](docs/INTERVIEW_PREP.md) contain presentation and interview materials.
 - [CHANGELOG.md](CHANGELOG.md) and [docs/decisions/](docs/decisions/) preserve project history and design decisions.

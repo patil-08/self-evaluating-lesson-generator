@@ -2,6 +2,7 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $previousMockMode = $env:MOCK_LLM
+$previousMemoryDb = $env:LESSONGEN_MEMORY_DB
 Push-Location $repoRoot
 
 function Invoke-PythonChecked {
@@ -16,24 +17,42 @@ function Invoke-PythonChecked {
 
 try {
     $env:MOCK_LLM = "1"
-    $memoryDb = "outputs\demo_memory.sqlite3"
-    $outputDir = "outputs\demo_runs"
+    $demoRoot = Join-Path $env:TEMP (
+        "lessongen-demo-" + (Get-Date -Format "yyyyMMdd-HHmmss") + "-" +
+        [Guid]::NewGuid().ToString("N").Substring(0, 8)
+    )
+    New-Item -ItemType Directory -Force -Path $demoRoot | Out-Null
+    $env:LESSONGEN_MEMORY_DB = Join-Path $demoRoot "memory.sqlite3"
+    $baselineDir = Join-Path $demoRoot "baseline"
+    $injectedDir = Join-Path $demoRoot "false-claim"
+    $followUpDir = Join-Path $demoRoot "follow-up"
 
     Invoke-PythonChecked @(
-        "-m", "src.cli", "run", "--topic", "Introduction to RAG",
-        "--mock", "--output-dir", $outputDir, "--memory-db", $memoryDb
+        "-m", "lessongen.cli", "run", "--topic", "Introduction to RAG",
+        "--mock", "--out", $baselineDir
+    )
+    $runId = (Get-Content (Join-Path $baselineDir "rejection_log.json") -Raw |
+        ConvertFrom-Json).run_id
+    Invoke-PythonChecked @(
+        "-m", "lessongen.cli", "feedback", "--run", $runId,
+        "--note", "Use a familiar everyday example."
     )
     Invoke-PythonChecked @(
-        "-m", "src.cli", "run", "--topic", "Introduction to RAG",
-        "--inject-error", "jargon", "--max-retries", "2", "--mock",
-        "--output-dir", $outputDir, "--memory-db", $memoryDb
+        "-m", "lessongen.cli", "run", "--topic", "Introduction to RAG",
+        "--inject-error", "false_claim", "--max-retries", "1", "--mock",
+        "--out", $injectedDir
     )
-    Invoke-PythonChecked @("-m", "src.cli", "memory", "--memory-db", $memoryDb)
     Invoke-PythonChecked @(
-        "-m", "src.cli", "evolve", "--memory-db", $memoryDb,
-        "--report", "outputs\demo_evolution_report.md",
-        "--changelog", "outputs\demo_CHANGELOG.md"
+        "-m", "lessongen.cli", "run", "--topic", "RAG follow-up",
+        "--mock", "--out", $followUpDir
     )
+    Invoke-PythonChecked @("-m", "lessongen.cli", "memory", "--limit", "5")
+    Invoke-PythonChecked @(
+        "-m", "lessongen.cli", "evolve", "--mock",
+        "--report", (Join-Path $demoRoot "evolution_report.md"),
+        "--decision-log", (Join-Path $demoRoot "evolution_decisions.jsonl")
+    )
+    Write-Host "`nDemo artifacts retained at: $demoRoot"
 }
 finally {
     Pop-Location
@@ -42,5 +61,11 @@ finally {
     }
     else {
         $env:MOCK_LLM = $previousMockMode
+    }
+    if ($null -eq $previousMemoryDb) {
+        Remove-Item Env:\LESSONGEN_MEMORY_DB -ErrorAction SilentlyContinue
+    }
+    else {
+        $env:LESSONGEN_MEMORY_DB = $previousMemoryDb
     }
 }

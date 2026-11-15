@@ -1,43 +1,66 @@
 # Submission checklist
 
-## Implementation and documentation
+## Assessment requirements
 
-- [x] LangGraph generation/evaluation loop has a hard maximum of two retries.
-- [x] Rubric is versioned and all checks are hard pass/fail.
-- [x] Sources, mock mode, persistent memory, and evidence-gated evolution are
-  documented.
-- [x] Windows and macOS/Linux setup and demo scripts are present.
-- [x] README, design notes, calibration report, Loom script, and interview prep
-  are present.
-- [x] `FINAL_LESSON.md` contains a plain-language RAG lesson, passes the local
-  mock rubric, and explicitly labels its fallback status.
-- [ ] Replace the fallback lesson with one from a real-provider run, after
-  configuring live credentials privately and confirming all checks pass.
-- [ ] Record and review the 15–20 minute Loom; keep your face visible and do
-  not show `.env` or other secrets.
-- [ ] Upload the repository and Loom link to the submission portal.
+- [x] Agentic LangGraph loop plans, generates, evaluates, routes, retries, and
+  ships only when every hard check passes.
+- [x] Retry limit is enforced at zero to two regenerations; exhaustion
+  escalates with the best draft and a rejection report.
+- [x] Versioned hard rubric covers grounding, beginner language, examples,
+  jargon, key points, and teaching flow.
+- [x] Reports include each attempt, failed check, reason, evidence, fix,
+  changes, final status, versions, model labels, tokens, latency, and whether
+  execution was mock or live.
+- [x] SQLite memory records runs, failure reasons, fix effectiveness, and
+  learner feedback; generation reports whether memory influenced a run.
+- [x] Prompt evolution is gated on repeated real failures, calibration, and
+  improved first-pass rate on real replay. Mock results cannot authorize
+  adoption.
+- [x] The lesson and learner profile target an Indian beginner with limited
+  English vocabulary; the worked example uses a familiar train timetable.
+- [x] README, design notes, rubric, source pack, calibration report,
+  presentation script, and interview prep are included.
 
-## Validation before submission
+## Verified locally on 2026-11-15
 
-- [x] Full pytest suite passes: `python -m pytest -q` — 50 passed.
-- [x] Mock calibration report shows 4/4 good lessons pass and 17/17 expected
-  flaw checks caught.
-- [x] Ordered PowerShell and Bash demo scripts were run with isolated mock data
-  and did not call a live provider.
-- [ ] After a live run, inspect the saved JSON/Markdown report and rejection
-  log; do not claim a real run if mock mode was active.
-- [x] Confirm `.env`, API keys, and personal data are not staged or committed.
-- [x] Verify `git status` is clean after the Step 9 commit.
+- [x] `python -m pytest -q`: **67 passed**, one third-party LangGraph
+  deprecation warning.
+- [x] Mock calibration: 12 fixtures, 4/4 known-good lessons passed, 17/17
+  expected flaw checks caught, 204/204 exact check outcomes; real calibration
+  was skipped.
+- [x] Windows end-to-end demo script ran successfully with isolated mock data:
+  passing run, feedback, false-claim repair, memory inspection, and ineligible
+  mock evolution.
+- [x] Bash demo script ran successfully under Git for Windows Bash; a native
+  macOS run was not performed.
+- [x] `outputs/final/lesson.md` was generated and shipped in **mock** mode.
+  Its JSON report identifies `execution_mode: mock`; it is not live-provider
+  evidence.
+- [x] A false-claim mock run failed `ACC-01` on attempt 1 and passed on attempt
+  2. Its report is saved outside the repository in
+  `C:\Project 2026\notes\DELIBERATE_ERROR_LOG.md`.
+- [x] `.env`, local SQLite data, and generated outputs are ignored by Git.
 
-## Current blocker
+## Still requires human/provider access
 
-The current environment reports `live_credentials_ready=False`. Do not paste a
-key into this repository or into chat. Configure the provider values in a local,
-ignored `.env` file, set `MOCK_LLM=0`, then run:
+- [ ] A successful live-provider generation and judge run. An earlier live
+  attempt failed with an invalid-key response. Do not paste a key into chat or
+  commit it; set valid provider values only in the ignored local `.env`.
+- [ ] Record and review the 15–20 minute video. The script is prepared, but no
+  recording is attached. Keep your face visible and do not show secrets.
+- [ ] Upload the GitHub repository, document, and video link to the submission
+  portal.
+- [ ] Run the Bash demo on macOS/Linux if cross-platform execution needs to be
+  demonstrated.
+
+To attempt a live run after configuring valid local provider settings, use a
+new output directory so the mock artifact remains available for comparison:
 
 ```powershell
-python -m src.cli run --topic "Introduction to RAG" --max-retries 2
+$env:MOCK_LLM = "0"
+python -m lessongen.cli run --topic "Introduction to RAG" --max-retries 2 --out outputs\final-live
 ```
 
-Only replace the fallback lesson after that command returns `passed` and the
-real-provider report has been reviewed.
+Inspect the JSON and Markdown rejection reports before presenting any live
+result. If the run does not pass, present it as escalated and do not call the
+lesson shipped.

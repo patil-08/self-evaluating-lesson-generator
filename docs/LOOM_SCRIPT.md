@@ -4,10 +4,11 @@
 
 - Keep the webcam on with your face visible throughout the walkthrough.
 - Share the project window, not the `.env` file or environment variables.
-- This workspace has no live LLM credentials configured. Say plainly that this
-  run uses deterministic mock mode; do not describe it as a live model run.
-- Start in the repository root. The following Windows commands use an isolated
-  demo database under `outputs/`.
+- A prior live-provider attempt failed with an invalid-key response. Use
+  deterministic mock mode for this walkthrough; do not describe it as a live
+  model run.
+- Start in the repository root. The following Windows commands use a unique
+  demonstration folder under the system temporary directory.
 - Activate the virtual environment first:
   `.\.venv\Scripts\Activate.ps1` on Windows or `. .venv/bin/activate` on
   macOS/Linux.
@@ -24,7 +25,7 @@ only returns it as approved if every hard check passes.”
 
 **1:00-2:00 — Explain the learner and rubric**
 
-Show the learner profile and `rubric/v1.yaml`. Explain that short sentences,
+Show the learner profile and `rubric/rubric_v1.yaml`. Explain that short sentences,
 plain vocabulary, a glossary, a familiar example, grounded claims, and a
 limitation are required. No partial score can hide a failed check.
 
@@ -43,6 +44,9 @@ In PowerShell, run:
 
 ```powershell
 $env:MOCK_LLM = "1"
+$DemoRoot = Join-Path $env:TEMP ("lessongen-demo-" + [Guid]::NewGuid().ToString("N"))
+New-Item -ItemType Directory -Force -Path $DemoRoot | Out-Null
+$env:LESSONGEN_MEMORY_DB = Join-Path $DemoRoot "memory.sqlite3"
 ```
 
 Say: “I’m choosing offline mock mode so the recording is reproducible and does
@@ -52,19 +56,19 @@ responses are canned.”
 **4:00-5:00 — Start the normal lesson run**
 
 ```powershell
-python -m src.cli run --topic "Introduction to RAG" --mock --output-dir outputs\demo_runs --memory-db outputs\demo_memory.sqlite3
+python -m lessongen.cli run --topic "Introduction to RAG" --mock --out "$DemoRoot\baseline"
 ```
 
 **5:00-7:00 — Walk through the result**
 
-Point out the status, run ID, model labels, report paths, and memory signals.
-Show the lesson sections and the rejection log. A clean run should say “No
-rejected drafts.” Explain that the Markdown and JSON reports preserve the
-attempt history and rubric version.
+Point out the `SHIPPED` status, run ID, mock model labels, report paths, and
+memory signals. Show the lesson sections and the rejection log. A clean run
+has one passing attempt. Explain that both reports preserve check results,
+rubric version, and explicit mock execution mode.
 
 **7:00-8:00 — Set up the evaluator demonstration**
 
-Explain that the next command adds one deliberate jargon error to the first
+Explain that the next command adds one deliberate false claim to the first
 draft. The expected behavior is rejection followed by a corrected retry, not
 silently accepting the draft.
 
@@ -73,33 +77,33 @@ silently accepting the draft.
 **8:00-9:00 — Run with a deliberate flaw**
 
 ```powershell
-python -m src.cli run --topic "Introduction to RAG" --inject-error jargon --max-retries 2 --mock --output-dir outputs\demo_runs --memory-db outputs\demo_memory.sqlite3
+python -m lessongen.cli run --topic "Introduction to RAG" --inject-error false_claim --max-retries 1 --mock --out "$DemoRoot\false-claim"
 ```
 
 **9:00-10:00 — Show the rejection**
 
 Read the failed check ID, why it failed, the evidence quote, and the explicit
-fix instruction. The injected phrase is an unsupported technical claim, so the
-accuracy and jargon checks reject it.
+fix instruction. The injected phrase makes an unsupported claim, so the
+accuracy check rejects it.
 
 **10:00-11:00 — Show what changed**
 
-Point to the retry-change summary in the console and the Markdown report in
-`outputs\demo_runs`. Explain that it records removed and added text rather
+Point to the retry-change summary in the Markdown report in
+`$DemoRoot\false-claim`. Explain that it records removed and added text rather
 than merely saying “fixed.”
 
 **11:00-12:00 — Show the final route**
 
-The retry passes and the status is `passed`. Explain that if it had failed
-again twice, the status would be `escalated_to_human` and the best draft would
-remain explicitly unapproved.
+The retry passes and the status is `SHIPPED`. Explain that if it had failed
+again at the retry cap, the status would be `ESCALATED` and only the best draft
+would be saved for human review.
 
 ## 12:00-15:00 — Memory and self-evolution (3 minutes)
 
 **12:00-13:00 — Display memory**
 
 ```powershell
-python -m src.cli memory --memory-db outputs\demo_memory.sqlite3
+python -m lessongen.cli memory --limit 5
 ```
 
 Point out run history, per-check failure counts, and which fix worked on the
@@ -115,7 +119,7 @@ rubric.”
 **14:00-15:00 — Run evolution**
 
 ```powershell
-python -m src.cli evolve --memory-db outputs\demo_memory.sqlite3 --report outputs\demo_evolution_report.md --changelog outputs\demo_CHANGELOG.md
+python -m lessongen.cli evolve --mock --report "$DemoRoot\evolution_report.md" --decision-log "$DemoRoot\evolution_decisions.jsonl"
 ```
 
 Open the report. In this isolated mock demonstration, expect no candidate and
@@ -134,9 +138,9 @@ acceptance over a misleading average score.
 
 The current source collection is about RAG, not arbitrary AI topics. The mock
 judge is a deterministic heuristic, not a substitute for full semantic
-verification. This environment has no live credentials, so the checked-in
-`FINAL_LESSON.md` is explicitly marked as a mock-checked fallback. Do not claim
-that a live generation or real-model judgment happened.
+verification. A previous live-provider attempt failed with an invalid-key
+response, so `FINAL_LESSON.md` remains a human-edited, mock-checked fallback.
+Do not claim that a live generation or real-model judgment happened.
 
 **17:00-18:00 — Next steps and close**
 
@@ -146,10 +150,10 @@ Show the test command and current result:
 python -m pytest -q
 ```
 
-Say that the next validation step is to configure credentials privately, run
-the live generation and judge, inspect the rejection log, and replace the
-fallback lesson only after a real passing run. Keep your face visible through
-the closing sentence.
+Say that the next validation step is to configure valid provider settings
+privately, run the live generation and judge, inspect the rejection log, and
+replace the fallback lesson only after a real passing run. Keep your face
+visible through the closing sentence.
 
 ## macOS/Linux command equivalents
 
@@ -159,7 +163,6 @@ The demo script runs the same sequence:
 bash scripts/demo.sh
 ```
 
-For manual recording, replace `outputs\...` in the four PowerShell commands
-above with `outputs/...`. Do not remove `--mock` unless live credentials have
-been configured and the recording is intentionally showing a real-provider
-run.
+For macOS/Linux, run the Bash script from the repository root. Do not remove
+`--mock` unless valid provider settings have been configured and the recording
+is intentionally showing a live-provider run.
